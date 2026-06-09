@@ -1,0 +1,352 @@
+version: "3.1"
+
+rules:
+
+# If the user's intent is greet_for_instruction, 
+# then rasa will activate instruction form.
+- rule: Activate instruction form
+  steps:
+  - intent: greet_for_instruction
+  - action: instruction_form
+  - active_loop: instruction_form
+
+# If the user's intent is check_libraries while instruction form is active, 
+# then rasa will utter libraries.
+# Then, rasa will deactivate instruction form.
+- rule: Check libraries from instruction form
+  condition:
+  - active_loop: instruction_form
+  steps:
+  - intent: check_libraries
+  - action: action_deactivate_loop
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_utter_libraries
+
+- rule: Check recognized objects from instruction form
+  condition:
+  - active_loop: instruction_form
+  steps:
+  - intent: check_recognized_objects
+  - action: action_deactivate_loop
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_utter_recognized_objects
+
+# If the user's intent is bot_challenge while instruction form is active, 
+# then rasa will utter iamabot.
+# Then, rasa will deactivate instruction form.
+- rule: Bot challenge from instruction form 
+  condition:
+  - active_loop: instruction_form
+  steps:
+  - intent: bot_challenge
+  - action: action_deactivate_loop
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_iamabot
+
+# If the user's intent is greet while instruction form is active, 
+# then rasa will utter greet.
+# Then, rasa will deactivate instruction form.
+- rule: Greet from instruction form
+  condition:
+  - active_loop: instruction_form
+  steps:
+  - intent: greet
+  - action: action_deactivate_loop
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: utter_greet
+
+# After receiving the instruction from the user, rasa processes the instruction.
+# Then, rasa will utter confirm_decomposed_actions, 
+# which asks the user to execute the decomposed actions.
+- rule: Submit instruction form
+  condition:
+  # Condition that instruction form is active
+  - active_loop: instruction_form
+  steps:
+  # Form is deactivated
+  - action: instruction_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_process_instruction_without_confirm 
+  - slot_was_set:
+    - complicated_instruction: false
+  - action: action_run_program_without_confirm
+
+# After receiving the instruction from the user, rasa processes the instruction.
+# Then, rasa will utter confirm_decomposed_actions, 
+# which asks the user to execute the decomposed actions.
+- rule: Submit instruction form
+  condition:
+  # Condition that instruction form is active
+  - active_loop: instruction_form
+  steps:
+  # Form is deactivated
+  - action: instruction_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - action: action_process_instruction_without_confirm 
+  - slot_was_set:
+    - complicated_instruction: true
+  - action: action_run_program_without_confirm_with_asking
+
+- rule: affirm revise decomposed actions
+  steps:
+  - action: action_run_program_without_confirm_with_asking
+  - intent: affirm
+  - action: utter_register_new_instruction
+
+- rule: deny revise decomposed actions
+  steps:
+  - action: action_run_program_without_confirm_with_asking
+  - intent: deny
+  - action: action_show_program
+  - action: utter_revise_decomposed_actions
+
+# If the user's intent is affirm for registering the new instruction 
+# and the new instruction is not remaining to define,
+# (If the new instruction(s) is(are) remaining to define, 
+# then complicated_instruction becomes true in action_register_new_instruction.)
+# then rasa will register the new instruction.
+- rule: affirm register new instruction
+  steps:
+  - action: utter_register_new_instruction
+  - intent: affirm
+  # - slot_was_set:
+  #   - new_instruction_remaining: false
+  - action: action_register_new_instruction
+  - slot_was_set:
+    - complicated_instruction: false
+
+# If the user's intent is affirm for registering the new instruction
+# and the new instruction is remaining to define,
+# (If the new instruction(s) is(are) remaining to define,
+# then complicated_instruction becomes true in action_register_new_instruction.)
+# then rasa will register the new instruction.
+# Then, rasa will do the following:
+# 1. rasa will revise the decomposed actions, which revise the decomposed actions.
+# In detail, before registering the new instruction, the previously defined decomposed actions are revised.
+# The registered new instruction is used to revise the decomposed actions (add/change).
+# 2. rasa will utter confirm_decomposed_actions, which asks the user to execute the decomposed actions.
+- rule: affirm register new instruction while new instruction remaining
+  steps:
+  - action: utter_register_new_instruction
+  - intent: affirm
+  # - slot_was_set:
+  #   - new_instruction_remaining: true
+  - action: action_register_new_instruction
+  - slot_was_set:
+    - complicated_instruction: true
+  - action: action_revise_decomposed_actions
+  - action: action_confirm_decomposed_actions
+
+# If the user's intent is deny for decomposed actions and the instruction is easy,
+# then rasa will utter okay.
+- rule: deny register new instruction
+  steps:
+  - action: utter_register_new_instruction
+  - intent: deny
+  - slot_was_set:
+    - new_instruction_remaining: false
+  - action: utter_okay
+
+# If the user's intent is deny for decomposed actions and there is a new instruction remaining to define,
+# then rasa will remind the current instruction to define.
+# Then, rasa will ask the user to run the decomposed actions.
+- rule: deny register new instruction while new instruction remaining
+  steps:
+  - action: utter_register_new_instruction
+  - intent: deny
+  - slot_was_set:
+    - new_instruction_remaining: true
+  - action: action_remind_current_instruction_to_define
+  # - action: block_change_form
+  # - active_loop: block_change_form
+  - action: action_confirm_decomposed_actions
+
+# If the user's intent is deny for decomposed actions and the instruction is easy,
+# then rasa will utter okay.
+- rule: deny action from easy instruction
+  steps:
+  - action: action_confirm_decomposed_actions
+  - intent: deny
+  - slot_was_set:
+    - complicated_instruction: false
+  - action: utter_okay
+
+# If the user's intent is deny for decomposed actions and the instruction is complicated,
+# then rasa will utter revise_decomposed_actions, which asks the user to revise the decomposed actions.
+- rule: deny decomposed actions from complicated instruction
+  steps:
+  - action: action_confirm_decomposed_actions
+  - intent: deny
+  - slot_was_set:
+    - complicated_instruction: true
+  - action: utter_revise_decomposed_actions
+
+# If the user's intent is affirm for revising the decomposed actions,
+# then rasa will utter ask_intent_with_decomposed_actions, 
+# which asks the user which revision among add/change/delete to do.
+- rule: revise decomposed actions
+  steps:
+  - action: utter_revise_decomposed_actions
+  - intent: affirm
+  - action: utter_ask_intent_with_decomposed_actions
+  # - action: block_change_form
+  # - active_loop: block_change_form
+
+# If the user's intent is change, then rasa will activate block_change_form.
+# Because the user's intent is change, 
+# rasa will ask which instruction to change into in addition to which block to change.
+- rule: change block to revise decomposed actions
+  steps:
+  - action: utter_ask_intent_with_decomposed_actions
+  - or:
+    - intent: change
+    - intent: revise_defined_new_instruction
+  - action: action_show_decomposed_actions_for_change_or_delete
+  - action: block_change_form
+  - active_loop: block_change_form
+
+# If the user's intent is delete, then rasa will activate block_change_form.
+# Because the user's intent is delete,
+# rasa will only ask which block to delete.
+- rule: delete block to revise decomposed actions
+  steps:
+  - action: utter_ask_intent_with_decomposed_actions
+  - intent: delete
+  - action: action_show_decomposed_actions_for_change_or_delete
+  - action: block_change_form
+  - active_loop: block_change_form
+  # - action: block_delete_form
+  # - active_loop: block_delete_form
+
+# If the user's intent is add, then rasa will activate block_change_form.
+# Because the user's intent is add,
+# rasa will show the decomposed actions for addition, 
+# which explains how to select the block position to add.
+# Then, rasa will ask which block position to add 
+# and which instruction to add into the selected block position.
+- rule: add block to revise decomposed actions
+  steps:
+  - action: utter_ask_intent_with_decomposed_actions
+  - intent: add
+  - action: action_show_decomposed_actions_for_addition
+  - action: block_change_form
+  - active_loop: block_change_form
+  # - action: block_add_form
+  # - active_loop: block_add_form
+
+# If the user submits block_change_form 
+# and there is no additional new instruction to define,
+# then rasa will revise the decomposed actions.
+# Then, rasa will utter confirm_decomposed_actions,
+# which asks the user to execute the decomposed actions.
+- rule: Submit block_change_form
+  condition:
+  # Condition that instruction form is active
+  - active_loop: block_change_form
+  steps:
+  # Form is deactivated
+  - action: block_change_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - slot_was_set:
+    - new_instruction_while_defining: false
+  - action: action_revise_decomposed_actions
+  - action: action_confirm_decomposed_actions
+
+# If the user submits block_change_form
+# and there is additional new instruction to define,
+# then rasa will ask the user to decompose the additional new instruction.
+- rule: Submit block_change_form and process additional new instruction
+  condition:
+  # Condition that instruction form is active
+  - active_loop: block_change_form
+  steps:
+  # Form is deactivated
+  - action: block_change_form
+  - active_loop: null
+  - slot_was_set:
+    - requested_slot: null
+  - slot_was_set:
+    - new_instruction_while_defining: true
+  - action: utter_confirm_decompose_additional_new_instruction
+  # - intent: affirm
+  # - action: action_process_additional_new_instruction
+  # - action: action_confirm_decomposed_actions
+
+# If the user's intent is affirm for decomposing the additional new instruction,
+# then rasa will decompose the additional new instruction.
+# Then, rasa will utter confirm_decomposed_actions,
+# which asks the user to execute the decomposed actions.
+- rule: affirm decompose additional new instruction
+  steps:
+  - action: utter_confirm_decompose_additional_new_instruction
+  - intent: affirm
+  - action: action_process_additional_new_instruction
+  - action: action_confirm_decomposed_actions
+
+# If the user's intent is deny for decomposing the additional new instruction,
+# then rasa will cancel the additional new instruction.
+# Then, rasa will show the current instruction to define 
+# and ask the user to run the decomposed actions.
+- rule: deny decompose additional new instruction
+  steps:
+  - action: utter_confirm_decompose_additional_new_instruction
+  - intent: deny
+  - action: action_cancel_additional_new_instruction
+  # - action: block_change_form
+  # - active_loop: block_change_form
+  - action: action_show_current_instruction 
+  - action: action_confirm_decomposed_actions
+
+# If the user's intent is deny for revising the decomposed actions 
+# and there is no additional new instruction to define,
+# then rasa will utter okay.
+- rule: deny revise decomposed actions
+  steps:
+  - action: utter_revise_decomposed_actions
+  - intent: deny
+  - slot_was_set:
+    - new_instruction_remaining: false
+  - action: utter_okay
+
+# If the user's intent is deny for revising the decomposed actions
+# and there is additional new instruction to define,
+# then rasa will remind the current instruction to define.
+# Then, rasa will ask the user to run the decomposed actions.
+- rule: deny revise decomposed actions while new instruction remaining
+  steps:
+  - action: utter_revise_decomposed_actions
+  - intent: deny
+  - slot_was_set:
+    - new_instruction_remaining: true
+  - action: action_remind_current_instruction_to_define
+  # - action: block_change_form
+  # - active_loop: block_change_form
+  - action: action_confirm_decomposed_actions
+
+- rule: happy path
+  steps:
+  # - intent: greet
+  - action: utter_greet
+  - intent: mood_great
+  - action: utter_happy
+
+- rule: sad path
+  steps:
+  # - intent: greet
+  - action: utter_greet
+  - intent: mood_unhappy
+  - action: utter_cheer_up

@@ -1,0 +1,314 @@
+version: "3.1"
+
+nlu:
+- intent: greet
+  examples: |
+    - hey
+    - hello
+    - hi
+    - good morning
+    - good evening
+    - good afternoon
+
+- intent: goodbye
+  examples: |
+    - cu
+    - good by
+    - cee you later
+    - good night
+    - bye
+    - goodbye
+    - have a nice day
+    - see you around
+    - bye bye
+    - see you later
+
+- intent: affirm
+  examples: |
+    - yes
+    - y
+    - indeed
+    - of course
+    - that sounds good
+    - correct
+    - alright
+    - ok
+    - great
+    - sure
+    - that's good
+    - awesome
+    - fine
+    - cool
+    - perfect
+    - sounds good
+    - wonderful
+    - yes, please
+    - yes, that sounds good
+    - yes, I want that
+    - yes, please do
+    - yes, please do that
+    - yes, please go on
+    - yes, please continue
+    - yes, please continue with that
+
+- intent: deny
+  examples: |
+    - no
+    - n
+    - never
+    - I don't think so
+    - don't like that
+    - no way
+    - not really
+    - nope
+    - no thank you
+    - no thanks
+    - not now
+    - not at all
+
+- intent: mood_great
+  examples: |
+    - amazing
+    - feeling like a king
+    - I am feeling very good
+    - I am great
+    - I am amazing
+    - I am going to save the world
+    - super stoked
+    - extremely good
+    - so good
+    - so perfect
+    - so happy
+    - so amazing
+    - I am good
+
+- intent: mood_unhappy
+  examples: |
+    - my day was horrible
+    - I am sad
+    - I don't feel very well
+    - I am disappointed
+    - super sad
+    - I'm so sad
+    - sad
+    - very sad
+    - unhappy
+    - not good
+    - not very good
+    - extremly sad
+    - so saad
+    - so sad
+    - I am not good
+
+- intent: bot_challenge
+  examples: |
+    - are you a bot?
+    - are you a human?
+    - am I talking to a bot?
+    - am I talking to a human?
+
+- intent: greet_for_instruction
+  examples: |
+    - hi spark
+    - hello spark
+    - hey spark
+    - hi spark bot
+    - hello spark bot
+    - hey spark bot
+    - hi spark robot
+    - hello spark robot
+    - hey spark robot
+    - hi sparky
+    - hello sparky
+    - hey sparky
+    - hi sparky bot
+    - hello sparky bot
+    - hey sparky bot
+    - hi sparky robot
+    - hello sparky robot
+    - hey sparky robot
+
+- intent: check_libraries
+  examples: |
+    - what can you do?
+    - what are your options?
+    - what are you capable of?
+    - what can you do for me?
+    - what are your capabilities?
+
+- intent: check_recognized_objects
+  examples: |
+    - what do you see?
+    - what do you recognize?
+    - what are you seeing?
+    - what are you looking at?
+    - what do you see in front of you?
+    - what did you see?
+    - what did you recognize?
+    - what did you see in front of you?
+
+- intent: revise_defined_new_instruction
+  examples: |
+    - I want to revise the instruction
+    - I want to revise the instructions
+    - I want to revise the instruction I just defined
+    - I want to revise the instructions I just defined
+    - I want to revise the instruction I just defined in the previous step
+    - I want to revise the instructions I just defined in the previous step
+    - I want to revise the difficult action
+    - I want to revise the difficult actions
+    - I want to revise the difficult action I just defined
+    - I want to revise the difficult actions I just defined
+    - I want to revise the difficult action I just defined in the previous step
+    - I want to revise the difficult actions I just defined in the previous step
+    - I want to revise the complicated action
+    - I want to revise the complicated actions
+    - I want to revise the complicated action I just defined
+    - I want to revise the complicated actions I just defined
+    - I want to revise the complicated action I just defined in the previous step
+    - I want to revise the complicated actions I just defined in the previous step
+    - I want to revise the complex action
+    - I want to revise the complex actions
+    - I want to revise the complex action I just defined
+    - I want to revise the complex actions I just defined
+    - I want to revise the complex action I just defined in the previous step
+    - I want to revise the complex actions I just defined in the previous step
+    - I want to edit the instruction
+    - I want to edit the instructions
+    - I want to edit the instruction I just defined
+    - I want to edit the instructions I just defined
+    - I want to edit the instruction I just defined in the previous step
+    - I want to edit the instructions I just defined in the previous step
+    - I want to edit the difficult action
+    - I want to edit the difficult actions
+    - I want to edit the difficult action I just defined
+    - I want to edit the difficult actions I just defined
+    - I want to edit the difficult action I just defined in the previous step
+    - I want to edit the difficult actions I just defined in the previous step
+    - I want to edit the complicated action
+    - I want to edit the complicated actions
+    - I want to edit the complicated action I just defined
+    - I want to edit the complicated actions I just defined
+    - I want to edit the complicated action I just defined in the previous step
+    - I want to edit the complicated actions I just defined in the previous step
+    - I want to edit the complex action
+    - I want to edit the complex actions
+    - I want to edit the complex action I just defined
+    - I want to edit the complex actions I just defined
+    - I want to edit the complex action I just defined in the previous step
+    - I want to edit the complex actions I just defined in the previous step
+    - I want to change the instruction
+    - I want to change the instructions
+    - I want to change the instruction I just defined
+    - I want to change the instructions I just defined
+    - I want to change the instruction I just defined in the previous step
+    - I want to change the instructions I just defined in the previous step
+    - I want to change the difficult action
+    - I want to change the difficult actions
+    - I want to change the difficult action I just defined
+    - I want to change the difficult actions I just defined
+    - I want to change the difficult action I just defined in the previous step
+    - I want to change the difficult actions I just defined in the previous step
+    - I want to change the complicated action
+    - I want to change the complicated actions
+    - I want to change the complicated action I just defined
+    - I want to change the complicated actions I just defined
+    - I want to change the complicated action I just defined in the previous step
+    - I want to change the complicated actions I just defined in the previous step
+    - I want to change the complex action
+    - I want to change the complex actions
+    - I want to change the complex action I just defined
+    - I want to change the complex actions I just defined
+    - I want to change the complex action I just defined in the previous step
+    - I want to change the complex actions I just defined in the previous step
+    - I want to modify the instruction
+    - I want to modify the instructions
+    - I want to modify the instruction I just defined
+    - I want to modify the instructions I just defined
+    - I want to modify the instruction I just defined in the previous step
+    - I want to modify the instructions I just defined in the previous step
+    - I want to modify the difficult action
+    - I want to modify the difficult actions
+    - I want to modify the difficult action I just defined
+    - I want to modify the difficult actions I just defined
+    - I want to modify the difficult action I just defined in the previous step
+    - I want to modify the difficult actions I just defined in the previous step
+    - I want to modify the complicated action
+    - I want to modify the complicated actions
+    - I want to modify the complicated action I just defined
+    - I want to modify the complicated actions I just defined
+    - I want to modify the complicated action I just defined in the previous step
+    - I want to modify the complicated actions I just defined in the previous step
+    - I want to modify the complex action
+    - I want to modify the complex actions
+    - I want to modify the complex action I just defined
+    - I want to modify the complex actions I just defined
+    - I want to modify the complex action I just defined in the previous step
+    - I want to modify the complex actions I just defined in the previous step
+
+- intent: delete
+  examples: |
+    - delete
+    - remove 
+    - erase
+    - I want to delete
+    - I want to remove
+    - I want to erase
+    - want to delete
+    - want to remove
+    - want to erase
+    - wanna delete
+    - wanna remove
+    - wanna erase
+
+- intent: change
+  examples: |
+    - revise
+    - change
+    - modify
+    - edit
+    - I want to revise
+    - I want to change
+    - I want to modify
+    - I want to edit
+    - want to revise
+    - want to change
+    - want to modify
+    - want to edit
+    - wanna revise
+    - wanna change
+    - wanna modify
+    - wanna edit
+
+- intent: add
+  examples: |
+    - add
+    - append
+    - insert
+    - I want to add
+    - I want to append
+    - I want to insert
+    - want to add
+    - want to append
+    - want to insert
+    - wanna add
+    - wanna append
+    - wanna insert
+
+- intent: instruction
+  examples: |
+    - go to chair
+    - find a chair
+    - move forward
+    - turn left
+    - turn right
+    - spin jump
+    - dance
+    - stand up
+    - stand down
+    - find a suitcase
+    - move to the suitcase
+    - move forward five times
+    - turn left three times
+    - find a chiar and if it is found, move to the chair
+    - find a suitcase and if it is found, move to the suitcase; otherwise, move to the chair

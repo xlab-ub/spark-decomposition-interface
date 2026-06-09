@@ -1,0 +1,16 @@
+.env
+*.pyc
+__pycache__/
+.rasa/
+models/*
+!models/20250131-150846-exhaustive-superset.tar.gz
+*.tar.gz
+*.mp3
+*.wav
+*.zip
+.DS_Store
+keys/
+actions/keys/
+*.egg-info/
+.venv/
+venv/

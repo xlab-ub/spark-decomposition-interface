@@ -1,0 +1,189 @@
+version: "3.1"
+
+intents:
+  - greet
+  - goodbye
+  - affirm
+  - deny
+  - mood_great
+  - mood_unhappy
+  - bot_challenge
+  - greet_for_instruction
+  - check_libraries
+  - check_recognized_objects
+  - revise_defined_new_instruction
+  - delete
+  - change
+  - add
+  - instruction
+
+entities:
+  - number
+  - ordinal
+
+slots:
+  complicated_instruction:
+    type: bool
+    influence_conversation: true
+    initial_value: false
+    mappings:
+    - type: custom
+  new_instruction_remaining:
+    type: bool
+    influence_conversation: true
+    initial_value: false
+    mappings:
+    - type: custom
+  new_instruction_while_defining:
+    type: bool
+    influence_conversation: true
+    initial_value: false
+    mappings:
+    - type: custom
+  # new_defined_instruction:
+  #   type: bool
+  #   influence_conversation: true
+  #   initial_value: false
+  #   mappings:
+  #   - type: custom
+  instruction:
+    type: text
+    mappings:
+    - type: from_text
+      conditions:
+      - active_loop: instruction_form
+        requested_slot: instruction
+  number:
+    type: any
+    mappings:
+    - type: from_entity
+      entity: number
+  ordinal:
+    type: any
+    mappings:
+    - type: from_entity
+      entity: ordinal
+  block_number:
+    type: text
+    mappings:
+    - type: from_text
+      conditions:
+      - active_loop: block_change_form
+        requested_slot: block_number
+  # new_defined_instruction_number:
+  #   type: text
+  #   mappings:
+  #   - type: from_text
+  #     conditions:
+  #     - active_loop: new_defined_instruction_change_form
+  #       requested_slot: new_defined_instruction_number
+  instruction_to_change_into:
+    type: text
+    mappings:
+    - type: from_text
+
+forms:
+  instruction_form:
+    required_slots:
+        - instruction
+    # https://forum.rasa.com/t/chitchat-rule-not-being-triggered/44333/11 
+    ignored_intents:
+        - check_libraries
+        - check_recognized_objects
+        - bot_challenge
+        - greet
+        - revise_defined_new_instruction
+        - change
+  block_change_form:
+    required_slots:
+        - block_number
+  # new_defined_instruction_change_form:
+  #   required_slots:
+  #       - new_defined_instruction_number
+
+responses:
+  utter_greet:
+  - text: "Hey! How are you?"
+
+  utter_cheer_up:
+  # - text: "Here is something to cheer you up:"
+  #   image: "https://i.imgur.com/nGF1K8f.jpg"
+  - text: "Cheer up!"
+
+  utter_did_that_help:
+  - text: "Did that help you?"
+
+  utter_happy:
+  - text: "Great, carry on!"
+
+  utter_goodbye:
+  - text: "Bye"
+
+  utter_okay:
+  - text: "Okay"
+  - text: "All right"
+  - text: "Got it"
+  - text: "Sure"
+  - text: "No problem"
+  - text: "No worries"
+  - text: "No problem at all"
+  - text: "Sure thing"
+  - text: "I understand"
+  - text: "I see"
+  - text: "I got it"
+
+  utter_iamabot:
+  - text: "I am a bot, Go1 from Unitree."
+
+  # utter_ask_instruction:
+  # - text: "Yes, What do you want me to do?"
+
+  # utter_confirm_decomposed_actions:
+  # - text: "Do you want me to try?"
+
+  utter_revise_decomposed_actions:
+  # 'change' is a simple and easy-to-understand word
+  - text: "Do you want to fix the program?"
+
+  utter_ask_intent_with_decomposed_actions:
+  - text: "What do you want to do among change, add, and remove?"
+
+  utter_register_new_instruction:
+  - text: "Do you want to save this new instruction?"
+
+  utter_confirm_decompose_additional_new_instruction:
+  - text: "The given instruction is new. Do you want to decompose it into basic instructions?"
+
+  # utter_numeral:
+  # - text: It is {number} and {ordinal}
+
+actions:
+  - validate_instruction_form
+  - action_ask_instruction
+  - validate_block_change_form
+  - action_process_instruction
+  - action_run_program
+  - action_tell_instruction
+  - action_tell_and_show_instruction
+  - action_run_program_without_confirm
+  - action_process_instruction_without_confirm 
+  - action_run_program_without_confirm_with_asking 
+  - action_show_program
+  - action_revise_decomposed_actions
+  - action_register_new_instruction
+  # - action_show_defined_new_instruction_to_revise
+  - action_utter_libraries
+  - action_utter_recognized_objects
+  - action_show_current_instruction
+  - action_remind_current_instruction_to_define
+  - action_confirm_decomposed_actions
+  - action_process_additional_new_instruction
+  - action_cancel_additional_new_instruction
+  - action_ask_block_number
+  - action_ask_instruction_to_change_into
+  - action_show_decomposed_actions_for_change_or_delete
+  - action_show_decomposed_actions_for_addition
+
+session_config:
+  session_expiration_time: 60
+  carry_over_slots_to_new_session: true

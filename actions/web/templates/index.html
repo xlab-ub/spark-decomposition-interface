@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spark</title>
+    <link rel="stylesheet" type="text/css" href="static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  </head>
+  <body>
+    <div class="main-container">
+      <!-- Left Column -->
+      <div class="left-column">
+        <!-- Camera Video Panel -->
+        <div class="panel panel-camera">
+          <div class="panel-header">
+            <span class="panel-icon">📷</span>
+            <h2>Camera Video</h2>
+          </div>
+          <div class="panel-content video-content">
+            <img src="{{ url_for('video_feed') }}" alt="Video Stream" class="video-feed">
+          </div>
+        </div>
+
+        <!-- Chat with Spark Panel -->
+        <div class="panel panel-chat">
+          <div class="panel-header">
+            <span class="panel-icon">💬</span>
+            <h2>Chat with Spark</h2>
+          </div>
+          <div class="panel-content chat-content">
+            <div class="chat-history" id="chatHistory"></div>
+            <form id="myForm" onsubmit="submitForm(event)" class="input-container">
+              <input type="text" id="userInput" name="data" placeholder="Type your answer...">
+              <button type="button" id="recordButton" onclick="startRecording()" title="Voice Input"></button>
+              <button type="button" id="greetButton" onclick="greet()" title="Say Hi"></button>
+              <button type="submit" id="submitButton" title="Send"></button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column -->
+      <div class="right-column">
+        <!-- Available Actions Panel -->
+        <div class="panel panel-actions">
+          <div class="panel-header">
+            <span class="panel-icon">⚡</span>
+            <h2>Available Actions</h2>
+            <span class="info-icon" title="Available building blocks for composing robot programs">ⓘ</span>
+          </div>
+          <div class="panel-content">
+            <p class="panel-subtitle">Available building blocks for composing robot programs</p>
+            <div id="predefinedLibraries" class="action-buttons"></div>
+            <div id="userDefinedLibraries" class="action-buttons custom-actions"></div>
+          </div>
+        </div>
+
+        <!-- Task Breakdown Panel -->
+        <div class="panel panel-task">
+          <div class="panel-header">
+            <span class="panel-icon">✨</span>
+            <h2>Task Breakdown</h2>
+            <span class="info-icon" title="Step-by-step breakdown of the task">ⓘ</span>
+          </div>
+          <div class="panel-content">
+            <div class="task-scrollable">
+              <div class="task-title" id="currentInstruction"></div>
+              <div class="high-level-task" id="highLevelTask"></div>
+              <ol class="task-steps" id="naturalLanguagePlans"></ol>
+            </div>
+
+            <div class="components-grid">
+              <div class="component-box component-action">
+                <h4>Action</h4>
+                <div id="actionComponents"></div>
+              </div>
+              <div class="component-box component-control">
+                <h4>Control</h4>
+                <div id="controlComponents"></div>
+              </div>
+              <div class="component-box component-condition">
+                <h4>Condition</h4>
+                <div id="conditionComponents"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Logic & Code Panel -->
+        <div class="panel panel-logic">
+          <div class="panel-header">
+            <span class="panel-icon">&lt;/&gt;</span>
+            <h2>Logic & Code</h2>
+            <span class="info-icon" title="How the program logic is derived">ⓘ</span>
+          </div>
+          <div class="panel-content logic-content">
+            <div class="logic-split">
+              <!-- Logic Flow Sub-panel -->
+              <div class="logic-flow-panel">
+                <div class="sub-panel-header">
+                  <span class="sub-icon">🔀</span>
+                  <h3>Logic Flow</h3>
+                </div>
+                <p class="sub-description">How components fit together:</p>
+                <div class="logic-flow-scroll">
+                  <ul class="logic-list" id="logicalRelations"></ul>
+                  <ul class="explanation-list" id="explanation"></ul>
+                </div>
+              </div>
+              
+              <!-- Program Code Sub-panel -->
+              <div class="program-code-panel">
+                <div class="sub-panel-header">
+                  <span class="sub-icon">&lt;/&gt;</span>
+                  <h3>Program Code</h3>
+                </div>
+                <p class="sub-description">How the code is derived:</p>
+                <pre class="code-display"><code id="currentCode"></code></pre>
+                <div class="code-legend">
+                  <span class="legend-item"><span class="legend-dot action-dot"></span>Actions</span>
+                  <span class="legend-item"><span class="legend-dot control-dot"></span>Controls</span>
+                  <span class="legend-item"><span class="legend-dot condition-dot"></span>Conditions</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="static/js/script.js"></script>
+  </body>
+</html>

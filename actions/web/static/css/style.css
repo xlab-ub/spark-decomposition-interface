@@ -1,0 +1,937 @@
+/* ========================================
+   SPARK - Robotics Programming Interface
+   Modern, Colorful, Panel-Based Design
+   ======================================== */
+
+/* CSS Variables for consistent theming */
+:root {
+  /* Primary Colors */
+  --color-primary: #2563eb;
+  --color-primary-light: #3b82f6;
+  --color-primary-dark: #1d4ed8;
+  
+  /* Panel Colors */
+  --panel-camera-bg: #f8fafc;
+  --panel-camera-border: #e2e8f0;
+  
+  --panel-actions-bg: #ecfdf5;
+  --panel-actions-border: #6ee7b7;
+  --panel-actions-accent: #10b981;
+  
+  --panel-task-bg: #fefce8;
+  --panel-task-border: #fde047;
+  --panel-task-accent: #eab308;
+  
+  --panel-logic-bg: #faf5ff;
+  --panel-logic-border: #c4b5fd;
+  --panel-logic-accent: #8b5cf6;
+  
+  --panel-chat-bg: #f0f9ff;
+  --panel-chat-border: #7dd3fc;
+  --panel-chat-accent: #0ea5e9;
+  
+  /* Component Colors */
+  --action-color: #3b82f6;
+  --control-color: #f97316;
+  --condition-color: #10b981;
+  
+  /* Text Colors */
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  
+  /* Background */
+  --bg-main: #f1f5f9;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+}
+
+/* Reset and Base Styles */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+/* Main Container - Two Column Layout
+   Locked to the viewport height so each panel can reserve its own slot and
+   scroll internally instead of growing the page. */
+.main-container {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  max-width: 1600px;
+  margin: 0 auto;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.left-column,
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  min-height: 0;       /* allow children to shrink below content size */
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Each panel in either column becomes a flex column so its header stays
+   fixed and the content area can carry the scroll. */
+.left-column > .panel,
+.right-column > .panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel > .panel-header {
+  flex-shrink: 0;
+}
+
+/* Right-column panels: content area lays out as a flex column. Whether the
+   content area scrolls as a whole, or hands scrolling off to an inner
+   region, is controlled per-panel below — for Task Breakdown and
+   Logic & Code we keep their summary boxes always visible. */
+.right-column > .panel > .panel-content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Reserved heights for the three right-side panels. The panels grow
+   proportionally to fill the viewport so users rarely need to scroll. */
+.panel-actions { flex: 0 1 auto; min-height: 180px; max-height: 30vh; }
+.panel-task    { flex: 1.1 1 0;  min-height: 260px; }
+.panel-logic   { flex: 1.4 1 0;  min-height: 300px; }
+
+/* Left column: camera keeps its natural aspect-ratio height; chat fills
+   the rest. Chat panel internals are styled below. */
+.panel-camera  { flex: 0 0 auto; }
+
+/* ========================================
+   PANEL BASE STYLES
+   ======================================== */
+.panel {
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+  transition: box-shadow 0.2s ease;
+}
+
+.panel:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md) var(--spacing-lg);
+  font-weight: 600;
+}
+
+.panel-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+  flex: 1;
+}
+
+.panel-icon {
+  font-size: 1.1rem;
+}
+
+.info-icon {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  cursor: help;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.info-icon:hover {
+  opacity: 1;
+}
+
+.panel-content {
+  padding: var(--spacing-lg);
+}
+
+.panel-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+/* ========================================
+   CAMERA VIDEO PANEL
+   ======================================== */
+.panel-camera {
+  background: var(--panel-camera-bg);
+  border: 2px solid var(--panel-camera-border);
+}
+
+.panel-camera .panel-header {
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+  border-bottom: 1px solid var(--panel-camera-border);
+}
+
+.video-content {
+  padding: var(--spacing-md);
+}
+
+.video-feed {
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-md);
+  background: #1e293b;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+}
+
+/* ========================================
+   CHAT PANEL
+   ======================================== */
+.panel-chat {
+  background: var(--panel-chat-bg);
+  border: 2px solid var(--panel-chat-border);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for flex children to shrink properly */
+}
+
+.panel-chat .panel-header {
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+  border-bottom: 1px solid var(--panel-chat-border);
+  flex-shrink: 0;
+}
+
+.chat-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-md);
+  min-height: 0; /* Important for flex children to shrink properly */
+}
+
+.chat-history {
+  flex: 1 1 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-sm);
+  min-height: 100px;
+}
+
+/* Input Container - Always at bottom */
+.input-container {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--panel-chat-border);
+  margin-top: auto; /* Push to bottom */
+  flex-shrink: 0; /* Don't shrink the input area */
+}
+
+/* Message Styles */
+.user-message,
+.response-message {
+  padding: var(--spacing-md);
+  margin: var(--spacing-sm) 0;
+  border-radius: var(--radius-md);
+  max-width: 85%;
+  word-wrap: break-word;
+  clear: both;
+}
+
+.user-message {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  float: right;
+  border-bottom-right-radius: var(--radius-sm);
+}
+
+.response-message {
+  background: white;
+  color: var(--text-primary);
+  float: left;
+  border: 1px solid var(--panel-chat-border);
+  border-bottom-left-radius: var(--radius-sm);
+}
+
+#userInput {
+  flex: 1;
+  padding: var(--spacing-md);
+  border: 2px solid var(--panel-chat-border);
+  border-radius: var(--radius-md);
+  font-size: 0.95rem;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#userInput:focus {
+  outline: none;
+  border-color: var(--panel-chat-accent);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+#userInput::placeholder {
+  color: var(--text-muted);
+}
+
+/* Chat Buttons */
+#submitButton, #recordButton, #greetButton {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+}
+
+#submitButton {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+}
+
+#submitButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+#submitButton::before {
+  content: '↑';
+  font-weight: bold;
+}
+
+#recordButton {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: white;
+}
+
+#recordButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+}
+
+#recordButton::before {
+  content: '🎤';
+}
+
+#recordButton.recording {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  animation: pulse 1s infinite;
+}
+
+#greetButton {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+#greetButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+#greetButton::before {
+  content: '👋';
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* ========================================
+   AVAILABLE ACTIONS PANEL
+   ======================================== */
+.panel-actions {
+  background: var(--panel-actions-bg);
+  border: 2px solid var(--panel-actions-border);
+}
+
+.panel-actions .panel-header {
+  background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+  border-bottom: 1px solid var(--panel-actions-border);
+}
+
+/* The Actions panel-content scrolls as a single region when the buttons
+   overflow the panel's reserved height. Selector specificity matches the
+   generic `.right-column > .panel > .panel-content` rule (0,3,0) so its
+   `overflow: hidden` no longer wins. We also drop the flex column layout
+   (the Actions panel doesn't need any pinned regions) and use plain block
+   flow, which guarantees the children's natural sizes drive overflow
+   instead of flex-shrink clipping them. */
+.right-column > .panel-actions > .panel-content {
+  display: block;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--spacing-sm);
+  list-style: none;
+}
+
+.action-buttons li { list-style: none; }
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: var(--radius-md);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  /* Important: no transition on background/border/color so toggling .active
+     during periodic refreshes does not produce any visible animation. */
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  text-align: left;
+  width: 100%;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.action-btn .icon {
+  font-size: 0.95rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.action-btn .action-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.action-btn .checkbox {
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 5px;
+  background: white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.action-btn .checkbox .check {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: transparent;
+  line-height: 1;
+}
+
+/* Active (used) state: persistent highlight, no animation. */
+.action-btn.active {
+  background: #ecfdf5;
+  border-color: var(--panel-actions-accent);
+  color: var(--text-primary);
+}
+
+.action-btn.active .icon {
+  color: var(--panel-actions-accent);
+}
+
+.action-btn.active .checkbox {
+  background: var(--panel-actions-accent);
+  border-color: var(--panel-actions-accent);
+}
+
+.action-btn.active .checkbox .check {
+  color: white;
+}
+
+.custom-actions {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px dashed var(--panel-actions-border);
+}
+
+.empty-state {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* ========================================
+   TASK BREAKDOWN PANEL
+   ======================================== */
+.panel-task {
+  background: var(--panel-task-bg);
+  border: 2px solid var(--panel-task-border);
+}
+
+.panel-task .panel-header {
+  background: linear-gradient(135deg, #fefce8 0%, #fef08a 100%);
+  border-bottom: 1px solid var(--panel-task-border);
+}
+
+/* Task Breakdown: the instruction + numbered steps scroll inside
+   .task-scrollable, while the Action/Control/Condition summary boxes stay
+   pinned at the bottom of the panel so they are always visible. */
+.task-scrollable {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--spacing-xs);
+}
+
+.task-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.high-level-task {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: rgba(234, 179, 8, 0.1);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--panel-task-accent);
+}
+
+.task-steps {
+  margin: var(--spacing-md) 0;
+  padding-left: var(--spacing-xl);
+  list-style: decimal;
+}
+
+.task-steps li {
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+/* Components Grid - pinned summary that never gets scrolled out of view. */
+.components-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-md);
+  flex-shrink: 0;
+}
+
+.component-box {
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  background: white;
+}
+
+.component-box h4 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 2px solid currentColor;
+}
+
+.component-action {
+  border: 2px solid var(--action-color);
+}
+
+.component-action h4 {
+  color: var(--action-color);
+}
+
+.component-control {
+  border: 2px solid var(--control-color);
+}
+
+.component-control h4 {
+  color: var(--control-color);
+}
+
+.component-condition {
+  border: 2px solid var(--condition-color);
+}
+
+.component-condition h4 {
+  color: var(--condition-color);
+}
+
+.component-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.8rem;
+  padding: var(--spacing-xs) 0;
+  color: var(--text-primary);
+}
+
+.component-item::before {
+  content: '→';
+  color: var(--text-muted);
+}
+
+.component-item.kind-action { color: var(--action-color); }
+.component-item.kind-control { color: var(--control-color); }
+.component-item.kind-condition { color: var(--condition-color); }
+.component-item.empty { color: var(--text-muted); font-style: italic; }
+.component-item.empty::before { content: ''; }
+
+/* ========================================
+   LOGIC & CODE PANEL
+   ======================================== */
+.panel-logic {
+  background: var(--panel-logic-bg);
+  border: 2px solid var(--panel-logic-border);
+}
+
+.panel-logic .panel-header {
+  background: linear-gradient(135deg, #faf5ff 0%, #ede9fe 100%);
+  border-bottom: 1px solid var(--panel-logic-border);
+}
+
+/* Logic & Code: hand scrolling off to each sub-panel so both Logic Flow
+   and Program Code headers remain visible at all times. */
+.logic-content {
+  padding: var(--spacing-md);
+}
+
+.logic-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-lg);
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.logic-flow-panel,
+.program-code-panel {
+  background: white;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  border: 1px dashed var(--panel-logic-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sub-panel-header,
+.sub-description {
+  flex-shrink: 0;
+}
+
+/* Inner scroll regions: only these scroll; the sub-panel headers stay put. */
+.logic-flow-scroll {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.sub-panel-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-sm);
+}
+
+.sub-panel-header h3 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--panel-logic-accent);
+  margin: 0;
+}
+
+.sub-icon {
+  font-size: 1rem;
+}
+
+.sub-description {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: var(--spacing-md);
+}
+
+.logic-list,
+.explanation-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.logic-list li,
+.explanation-list li {
+  padding: var(--spacing-sm) 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.logic-list li:last-child,
+.explanation-list li:last-child {
+  border-bottom: none;
+}
+
+/* Code highlighting in logic */
+.logic-list code,
+.explanation-list code {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Courier New', monospace;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.logic-list code.kw-control,
+.explanation-list code.kw-control {
+  background: #fef3c7;
+  color: var(--control-color);
+}
+
+.logic-list code.kw-condition,
+.explanation-list code.kw-condition {
+  background: #d1fae5;
+  color: var(--condition-color);
+}
+
+.logic-list code.kw-action,
+.explanation-list code.kw-action {
+  background: #dbeafe;
+  color: var(--action-color);
+}
+
+/* Program Code Display */
+.code-display {
+  background: #1e1e2e;
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  overflow: auto;
+  margin: 0;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.code-display code {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #cdd6f4;
+  display: block;
+}
+
+/* Syntax Highlighting */
+.keyword {
+  color: #cba6f7;
+  font-weight: 600;
+}
+
+.function {
+  color: #89b4fa;
+}
+
+.number {
+  color: #fab387;
+}
+
+.comment {
+  color: #6c7086;
+  font-style: italic;
+}
+
+.condition-highlight {
+  color: #a6e3a1;
+}
+
+/* Code Legend - stays anchored under the scrollable code block. */
+.code-legend {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-sm);
+  border-top: 1px solid #f3f4f6;
+  flex-shrink: 0;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.action-dot {
+  background: var(--action-color);
+}
+
+.control-dot {
+  background: var(--control-color);
+}
+
+.condition-dot {
+  background: var(--condition-color);
+}
+
+/* ========================================
+   RESPONSIVE DESIGN
+   ======================================== */
+@media (max-width: 1200px) {
+  /* Relax the viewport lock on smaller screens — let the page flow and
+     each panel grow to fit its content (the user scrolls the page). */
+  .main-container {
+    grid-template-columns: 1fr;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .left-column {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-lg);
+    height: auto;
+    overflow: visible;
+  }
+
+  .right-column {
+    height: auto;
+    overflow: visible;
+  }
+
+  .right-column > .panel > .panel-content {
+    flex: 0 0 auto;
+    overflow: visible;
+    display: block;
+  }
+
+  .panel-actions,
+  .panel-task,
+  .panel-logic {
+    flex: 0 0 auto;
+    min-height: 0;
+    max-height: none;
+  }
+
+  .task-scrollable,
+  .logic-flow-scroll,
+  .code-display {
+    overflow: visible;
+    flex: 0 0 auto;
+    max-height: none;
+  }
+
+  .logic-flow-panel,
+  .program-code-panel {
+    overflow: visible;
+  }
+
+  .logic-split {
+    grid-template-columns: 1fr;
+    flex: 0 0 auto;
+  }
+}
+
+@media (max-width: 768px) {
+  .main-container {
+    padding: var(--spacing-sm);
+  }
+  
+  .left-column {
+    grid-template-columns: 1fr;
+  }
+  
+  .components-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .panel-header h2 {
+    font-size: 0.9rem;
+  }
+}
+
+/* ========================================
+   SCROLLBAR STYLING
+   ======================================== */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* ========================================
+   ANIMATIONS
+   ======================================== */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.panel {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Staggered animation for panels */
+.panel-camera { animation-delay: 0s; }
+.panel-chat { animation-delay: 0.1s; }
+.panel-actions { animation-delay: 0.05s; }
+.panel-task { animation-delay: 0.15s; }
+.panel-logic { animation-delay: 0.2s; }
