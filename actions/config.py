@@ -25,6 +25,16 @@ LLM_MODEL = os.environ.get(
     "SPARK_LLM_MODEL",
     "gpt-4o-mini" if LLM_PROVIDER == "openai" else "hosted_vllm/openai/gpt-oss-20b",
 )
+
+
+def _resolve_request_model(provider, model):
+    if provider != "vllm":
+        return model
+    if model.startswith("hosted_vllm/"):
+        return model.removeprefix("hosted_vllm/")
+    return model
+
+
 def _normalize_api_base(api_base):
     api_base = (api_base or "").rstrip("/")
     if not api_base:
@@ -49,13 +59,17 @@ def _resolve_custom_llm_provider(provider, model):
     if provider != "vllm":
         return None
     if model.startswith("hosted_vllm/"):
-        return None
+        hosted_model = model.removeprefix("hosted_vllm/")
+        if "/" in hosted_model:
+            return hosted_model.split("/", 1)[0]
+        return "openai"
     if "/" in model:
         return model.split("/", 1)[0]
     return "openai"
 
 
 LLM_CUSTOM_PROVIDER = _resolve_custom_llm_provider(LLM_PROVIDER, LLM_MODEL)
+LLM_REQUEST_MODEL = _resolve_request_model(LLM_PROVIDER, LLM_MODEL)
 LLM_API_KEY = os.environ.get(
     "SPARK_LLM_API_KEY",
     os.environ.get("OPENAI_API_KEY", "EMPTY"),

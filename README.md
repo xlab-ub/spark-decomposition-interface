@@ -11,6 +11,10 @@ conda create -n spark python=3.9
 conda activate spark
 cd spark-decomposition-interface
 pip install -r requirements.txt
+pip install --upgrade pydantic
+pip install opencv-python
+pip install numpy==1.23.5
+pip install paramiko
 cp .env.example .env
 # Edit .env with your LLM API key or local vLLM endpoint (.env is loaded automatically by actions)
 ```
@@ -26,9 +30,10 @@ On Apple M1, Duckling may need to run on a remote Linux server with port forward
 ### 3. Train and run Rasa
 
 ```bash
-# Use the included pretrained model, or run `rasa train` to retrain
-rasa run --enable-api -p 15005 --model models/20250131-150846-exhaustive-superset.tar.gz  # terminal 1
-rasa run actions -p 15055              # terminal 2 (from this directory)
+# Train the Rasa model (once) and run the Rasa server and action server in separate terminals:
+rasa train 
+rasa run --enable-api -p 15005  # terminal 1
+rasa run actions -p 15055       # terminal 2 (from this directory)
 ```
 
 ### 4. Open the web UI
@@ -40,7 +45,7 @@ Visit `http://localhost:9999` after actions start. The default robot backend is 
 | Provider | `.env` settings |
 |----------|-----------------|
 | OpenAI (commercial) | `SPARK_LLM_PROVIDER=openai`, `OPENAI_API_KEY=...`, `SPARK_LLM_MODEL=gpt-4o-mini` |
-| Local vLLM (Docker) | `SPARK_LLM_PROVIDER=vllm`, `SPARK_LLM_API_BASE=http://localhost:8000/v1`, `SPARK_LLM_MODEL=hosted_vllm/openai/gpt-oss-20b` — run `docker run --gpus all -p 8000:8000 vllm/vllm-openai:latest --model openai/gpt-oss-20b` |
+| Local vLLM (Docker) | `SPARK_LLM_PROVIDER=vllm`, `SPARK_LLM_API_BASE=http://localhost:8000/v1`, `SPARK_LLM_MODEL=hosted_vllm/openai/gpt-oss-20b` — the app strips the `hosted_vllm/` prefix before request time; run `docker run --gpus all -p 8000:8000 vllm/vllm-openai:latest --model openai/gpt-oss-20b` |
 
 ## Robot backend
 

@@ -8,6 +8,7 @@ from config import (
     LLM_CUSTOM_PROVIDER,
     LLM_MAX_TOKENS,
     LLM_MODEL,
+    LLM_REQUEST_MODEL,
     LLM_PROVIDER,
     LLM_TEMPERATURE,
     LLM_TOP_P,
@@ -43,7 +44,7 @@ class ProgramGenerator:
 
     def _complete(self, text):
         kwargs = {
-            "model": LLM_MODEL,
+            "model": LLM_REQUEST_MODEL,
             "messages": [{"role": "user", "content": text}],
             "api_key": LLM_API_KEY,
             "temperature": self.temperature,
@@ -56,7 +57,7 @@ class ProgramGenerator:
             kwargs["extra_body"] = {"include_reasoning": False}
             if LLM_CUSTOM_PROVIDER:
                 kwargs["custom_llm_provider"] = LLM_CUSTOM_PROVIDER
-            print(f"LLM request -> {LLM_API_BASE} model={LLM_MODEL}")
+            print(f"LLM request -> {LLM_API_BASE} model={LLM_REQUEST_MODEL}")
         response = completion(**kwargs)
         choice = response.choices[0]
         output_text = self._extract_message_text(choice.message)
