@@ -15,9 +15,15 @@ pip install --upgrade pydantic
 pip install opencv-python
 pip install numpy==1.23.5
 pip install paramiko
+# Python 3.8: pip install mujoco==3.2.3
+# Python 3.9+: pip install mujoco>=3.3.6
 cp .env.example .env
 # Edit .env with your LLM API key or local vLLM endpoint (.env is loaded automatically by actions)
 ```
+
+The bundled YOLOv7-tiny detector requires OpenCV 4 because OpenCV 5 removed
+Darknet `.cfg`/`.weights` import. Installing `requirements.txt` selects a
+compatible `opencv-python>=4.8,<4.12` build.
 
 ### 2. Duckling (entity extraction)
 
@@ -53,8 +59,29 @@ Visit `http://localhost:9999` after actions start. The default robot backend is 
 |------|---------|-------------|
 | No-op (default) | `SPARK_ROBOT_BACKEND=noop` | Validates and logs commands; no hardware |
 | Go1 | `SPARK_ROBOT_BACKEND=go1` | Real Unitree Go1 via vendored free-dog-sdk |
+| Go2 MuJoCo | `SPARK_ROBOT_BACKEND=go2_mujoco` | Go2 simulation using MuJoCo, with the camera panel driven by the rendered simulator frame |
 
 See `docs/SETUP_GO1.md` for robot network configuration.
+
+For the Go2 MuJoCo backend, clone `https://github.com/unitreerobotics/unitree_mujoco` into `actions/robot/unitree_mujoco`.
+If you prefer a different location, set `SPARK_GO2_MUJOCO_ROOT` or `SPARK_GO2_MUJOCO_SCENE` accordingly.
+
+```bash
+cd actions/robot
+git clone https://github.com/unitreerobotics/unitree_mujoco
+```
+
+Then make sure `.env` points at the local checkout:
+
+```bash
+SPARK_GO2_MUJOCO_ROOT=./actions/robot/unitree_mujoco
+```
+
+The action panel and program-generation prompts are backend-aware. The Go2
+MuJoCo adapter exposes posture and locomotion primitives it actually implements;
+it also exposes camera-based `FIND` through a simulated front camera and the
+bundled YOLOv7-tiny detector, without advertising Go1-only trick motions. See
+`docs/GO2_MUJOCO.md` for the command mapping and remaining controller work.
 
 ## Project layout
 

@@ -56,8 +56,14 @@ Multiple prompt templates are registered via `add_prompter()` and selected by in
 |---------|-------|----------|
 | `noop` (default) | `NoopRobotBackend` | Accepts all valid syntax, logs commands |
 | `go1` | `go1_highcommand` | Real Unitree Go1 via free-dog-sdk |
+| `go2_mujoco` | `Go2MujocoBackend` | MuJoCo Go2 simulation with a rendered camera stream |
 
 Selection via `SPARK_ROBOT_BACKEND` in `.env`.
+
+When `go2_mujoco` is active, the web UI camera panel streams the simulator frame returned by the backend instead of the physical camera.
+Primitive actions come from `robot/capabilities.py`; the same backend-specific
+list feeds program-generation prompts and `/get_current_libraries`, preventing
+the UI from advertising Go1-only operations to the Go2 simulator.
 
 ### Web UI (`actions/web/`)
 
