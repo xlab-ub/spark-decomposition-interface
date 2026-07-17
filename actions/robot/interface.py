@@ -4,6 +4,11 @@ from typing import List, Optional
 
 class RobotBackend(ABC):
     @abstractmethod
+    def get_available_actions(self) -> List[str]:
+        """Return simplified primitive names supported by this backend."""
+        pass
+
+    @abstractmethod
     def check_simplified_syntax_validity(self, simplified_code: str) -> bool:
         pass
 

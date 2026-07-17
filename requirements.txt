@@ -7,3 +7,9 @@ requests>=2.28
 numpy>=1.23,<2.0
 Pillow>=9.0
 werkzeug==2.2.2
+# OpenCV 5 removed the Darknet .cfg/.weights importer used by the bundled
+# YOLOv7-tiny detector.  4.12 also requires NumPy 2 on modern Python, while
+# this project intentionally supports NumPy 1.x.
+opencv-python>=4.8,<4.12
+mujoco>=3.2.3,<3.3; python_version < "3.9"
+mujoco>=3.3.6; python_version >= "3.9"

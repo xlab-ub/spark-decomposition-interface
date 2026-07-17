@@ -1,0 +1,73 @@
+"""Frame-based object detection shared by simulated camera backends."""
+
+from pathlib import Path
+from typing import List, Tuple
+
+import numpy as np
+
+
+class YoloV7TinyDetector:
+    """Run the Go1 bundled YOLOv7-tiny model on an in-memory BGR frame."""
+
+    def __init__(self, confidence=0.5, nms_threshold=0.4):
+        try:
+            import cv2
+        except ImportError as exc:
+            raise RuntimeError("OpenCV is required for simulated object detection") from exc
+
+        sdk_dir = Path(__file__).resolve().parent / "free_dog_sdk"
+        self.cv2 = cv2
+        major_version = int(cv2.__version__.split(".", 1)[0])
+        if major_version >= 5:
+            raise RuntimeError(
+                f"OpenCV {cv2.__version__} removed Darknet model import. "
+                "Install the supported build with "
+                "`python -m pip install 'opencv-python>=4.8,<4.12'`."
+            )
+        self.confidence = confidence
+        self.nms_threshold = nms_threshold
+        self.classes = (sdk_dir / "coco.names").read_text().splitlines()
+        self.model = cv2.dnn.readNet(
+            str(sdk_dir / "models" / "yolov7-tiny.weights"),
+            str(sdk_dir / "models" / "yolov7-tiny.cfg"),
+        )
+        layer_names = self.model.getLayerNames()
+        self.output_layers = [layer_names[int(i) - 1] for i in self.model.getUnconnectedOutLayers()]
+
+    def detect(self, frame: np.ndarray) -> Tuple[List[int], List[List[float]], np.ndarray]:
+        cv2 = self.cv2
+        height, width = frame.shape[:2]
+        self.model.setInput(
+            cv2.dnn.blobFromImage(frame, 1 / 255.0, (416, 416), swapRB=True, crop=False)
+        )
+        boxes, confidences, class_ids, centers = [], [], [], []
+        for output in self.model.forward(self.output_layers):
+            for detection in output:
+                scores = detection[5:]
+                class_id = int(np.argmax(scores))
+                confidence = float(scores[class_id])
+                if confidence <= self.confidence:
+                    continue
+                center_x, center_y = int(detection[0] * width), int(detection[1] * height)
+                box_width, box_height = int(detection[2] * width), int(detection[3] * height)
+                boxes.append([
+                    int(center_x - box_width / 2), int(center_y - box_height / 2),
+                    box_width, box_height,
+                ])
+                confidences.append(confidence)
+                class_ids.append(class_id)
+                centers.append([float(detection[0]), float(detection[1])])
+
+        indexes = cv2.dnn.NMSBoxes(boxes, confidences, self.confidence, self.nms_threshold)
+        kept = {int(index) for index in np.asarray(indexes).reshape(-1)}
+        annotated = frame.copy()
+        kept_ids, kept_centers = [], []
+        for index in sorted(kept):
+            x, y, box_width, box_height = boxes[index]
+            class_id = class_ids[index]
+            kept_ids.append(class_id)
+            kept_centers.append(centers[index])
+            label = f"{self.classes[class_id]} {confidences[index]:.2f}"
+            cv2.rectangle(annotated, (x, y), (x + box_width, y + box_height), (60, 220, 120), 2)
+            cv2.putText(annotated, label, (x, max(y - 6, 12)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (60, 220, 120), 1)
+        return kept_ids, kept_centers, annotated

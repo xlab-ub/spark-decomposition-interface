@@ -154,7 +154,9 @@ class go1_highcommand:
         return [self.available_classes[class_id] for class_id in self.class_ids] 
 
     def get_frame(self):
-        return self.frame
+        # Return the newest captured frame; object detection no longer limits
+        # the real-camera web stream frame rate.
+        return self.go1_camera_module.get_frame()
 
     def get_ultrasound_data(self):
         while True:

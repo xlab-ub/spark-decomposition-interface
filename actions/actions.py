@@ -11,11 +11,14 @@ import os
 import sys 
 import threading 
 import re 
+import time
+from io import BytesIO
 from typing import Any, Text, Dict, List
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
 from rasa_sdk.forms import FormValidationAction
 from rasa_sdk.events import SlotSet
+from PIL import Image, ImageDraw
 
 sys.path.insert(0, os.path.dirname(__file__))
 
@@ -29,6 +32,9 @@ from config import (
     FIND_SIMILAR,
     RASA_SERVER_URL,
     WEB_SERVER_PORT,
+    ROBOT_BACKEND,
+    VIDEO_STREAM_FPS,
+    VIDEO_JPEG_QUALITY,
 )
 from engine.generator import ProgramGenerator, ProgramGenerator_openai
 from prompts.decompose_direct import PROMPT
@@ -38,14 +44,13 @@ from prompts.normalize_pseudo_instruction import PROMPT_TO_MAKE_PSEUDO
 from prompts.decompose_structured import PROMPT_PSEUDO
 from prompts.find_similar_instruction import PROMPT_TO_FIND_SIMILAR
 from robot import create_robot_backend
+from robot.capabilities import get_backend_action_names
 from robot.syntax import get_first_indent
 
 lock = threading.Lock()
 
 if RASA_TEST:
     import numpy as np
-    from PIL import Image
-    from io import BytesIO
 else:
     import cv2
 
@@ -66,11 +71,7 @@ if WEB_SERVER:
 #                     'move_forward', 'move_left', 'move_right', 'turn_left', 'turn_right',
 #                     'spin_jump', 'lift', 'first_dance', 'second_dance', 
 #                     'find']
-function_library = ['STAND_DOWN', 'STAND_UP',
-                    'TILT_LEFT_SHOULDER', 'TILT_RIGHT_SHOULDER', 'TILT_HEAD_UP', 'TILT_HEAD_DOWN', 'TILT_HEAD_LEFT', 'TILT_HEAD_RIGHT', 
-                    'MOVE_FORWARD', 'MOVE_LEFT', 'MOVE_RIGHT', 'TURN_LEFT', 'TURN_RIGHT',
-                    'SPIN_JUMP', 'LIFT', 'FIRST_DANCE', 'SECOND_DANCE',
-                    'FIND']
+function_library = get_backend_action_names(ROBOT_BACKEND)
 basic_function_library = function_library.copy()
 new_function_library = {}
 
@@ -1262,45 +1263,63 @@ if WEB_SERVER:
         _messages = [r['text'] for r in res.json() if r['recipient_id'] == sender]
         res_msg = '\n'.join(_messages)
         return res_msg
+
+    def _build_placeholder_frame(message="Waiting for simulation frame..."):
+        image = Image.new("RGB", (640, 360), (14, 18, 28))
+        draw = ImageDraw.Draw(image)
+        draw.text((24, 24), "Spark camera stream", fill=(240, 248, 255))
+        draw.text((24, 48), message, fill=(200, 210, 220))
+        draw.rectangle((24, 92, 616, 336), outline=(90, 130, 190), width=2)
+        buffer = BytesIO()
+        image.save(buffer, format="JPEG")
+        return buffer.getvalue()
+
+    def _frame_to_jpeg_bytes(frame, resize=True, resized_resolution=(320, 240)):
+        if frame is None:
+            return _build_placeholder_frame()
+
+        # OpenCV encoding avoids the BGR->RGB->PIL conversion on every frame
+        # for both the physical Go1 camera and the Go2 simulator.
+        try:
+            import cv2
+            if resize:
+                frame = cv2.resize(frame, resized_resolution, interpolation=cv2.INTER_AREA)
+            success, encoded = cv2.imencode(
+                ".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, VIDEO_JPEG_QUALITY]
+            )
+            if success:
+                return encoded.tobytes()
+        except (ImportError, AttributeError):
+            pass
+
+        image = Image.fromarray(frame[:, :, ::-1])
+        if resize:
+            image = image.resize(resized_resolution)
+        buffer = BytesIO()
+        image.save(buffer, format="JPEG", quality=VIDEO_JPEG_QUALITY)
+        return buffer.getvalue()
     
-    if not RASA_TEST: 
-        # https://blog.miguelgrinberg.com/post/video-streaming-with-flask 
-        def video_streaming(resize=True, resized_resolution=(320, 240)):
-            while True:
-                if resize:
-                    _, frame_bytes = cv2.imencode('.jpg', cv2.resize(go1.get_frame(), resized_resolution))
-                else:
-                    _, frame_bytes = cv2.imencode('.jpg', go1.get_frame())
-                frame = frame_bytes.tobytes()
-                yield (b'--frame\r\n'
-                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+    # https://blog.miguelgrinberg.com/post/video-streaming-with-flask
+    def video_streaming(resize=True, resized_resolution=(320, 240)):
+        frame_period = 1.0 / max(VIDEO_STREAM_FPS, 1.0)
+        next_frame_at = time.perf_counter()
+        while True:
+            frame = go1.get_frame()
+            frame_bytes = _frame_to_jpeg_bytes(frame, resize=resize, resized_resolution=resized_resolution)
+            yield (b'--frame\r\n'
+                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
+            next_frame_at += frame_period
+            delay = next_frame_at - time.perf_counter()
+            if delay > 0:
+                time.sleep(delay)
+            else:
+                # Do not accumulate lag after a slow capture/encode iteration.
+                next_frame_at = time.perf_counter()
 
-        @app.route('/video_feed')
-        def video_feed():
-            return Response(video_streaming(resize=False),
-                            mimetype='multipart/x-mixed-replace; boundary=frame')
-    else:
-        def video_streaming():
-            while True:
-                # just for testing, so we do not need to get the frame from the camera
-                # create a black image
-                img = np.zeros((320,240,3), np.uint8)
-                # Convert NumPy array to PIL Image
-                pil_img = Image.fromarray(img)
-                # Create an in-memory binary stream (BytesIO object)
-                img_bytesio = BytesIO()
-                # Save the PIL Image as a JPEG image to the binary stream
-                pil_img.save(img_bytesio, format='JPEG')
-                # Get the binary data from the stream
-                frame = img_bytesio.getvalue()
-
-                yield (b'--frame\r\n'
-                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
-
-        @app.route('/video_feed')
-        def video_feed():
-            return Response(video_streaming(),
-                            mimetype='multipart/x-mixed-replace; boundary=frame')
+    @app.route('/video_feed')
+    def video_feed():
+        return Response(video_streaming(resize=False),
+                        mimetype='multipart/x-mixed-replace; boundary=frame')
 
     # Define this outside the route so that it is only defined once at startup.
     if TTS_ON:
@@ -1326,7 +1345,11 @@ if WEB_SERVER:
     def get_current_libraries():
         global basic_function_library
         global new_function_library
-        return jsonify({'basic_function_library': basic_function_library, 'new_function_library': list(new_function_library.keys())})
+        return jsonify({
+            'backend': ROBOT_BACKEND,
+            'basic_function_library': basic_function_library,
+            'new_function_library': list(new_function_library.keys()),
+        })
     
     @app.route('/get_current_instruction', methods=['GET'])
     def get_current_instruction():
@@ -1373,6 +1396,8 @@ if WEB_SERVER:
     threading.Thread(target=flask_run, daemon=True).start()
 
 if __name__ == "__main__":
+    if 'cv2' not in globals():
+        raise RuntimeError("OpenCV is required for the standalone actions.py viewer mode.")
     # https://github.com/opencv/opencv/issues/22602 
     try:
         while True:

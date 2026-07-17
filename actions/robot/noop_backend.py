@@ -1,6 +1,7 @@
 from typing import List, Optional
 
 from robot.interface import RobotBackend
+from robot.capabilities import GO1_ACTIONS
 
 
 class NoopRobotBackend(RobotBackend):
@@ -29,3 +30,6 @@ class NoopRobotBackend(RobotBackend):
 
     def execute_simplified_syntax(self, simplified_code: str) -> None:
         print(f"[noop] Would execute:\n{simplified_code}")
+
+    def get_available_actions(self) -> List[str]:
+        return list(GO1_ACTIONS)

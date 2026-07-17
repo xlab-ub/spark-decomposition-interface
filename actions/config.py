@@ -19,6 +19,23 @@ FIND_SIMILAR = _env_bool("SPARK_FIND_SIMILAR", False)
 GPT_WITH_LOCAL_LLM = _env_bool("SPARK_GPT_WITH_LOCAL_LLM", True)
 
 ROBOT_BACKEND = os.environ.get("SPARK_ROBOT_BACKEND", "noop").lower()
+GO2_MUJOCO_ROOT = os.environ.get(
+    "SPARK_GO2_MUJOCO_ROOT",
+    str(Path(__file__).resolve().parent / "robot" / "unitree_mujoco"),
+)
+GO2_MUJOCO_SCENE = os.environ.get("SPARK_GO2_MUJOCO_SCENE", "")
+GO2_MUJOCO_RENDER_WIDTH = int(os.environ.get("SPARK_GO2_MUJOCO_RENDER_WIDTH", "640"))
+GO2_MUJOCO_RENDER_HEIGHT = int(os.environ.get("SPARK_GO2_MUJOCO_RENDER_HEIGHT", "360"))
+GO2_MUJOCO_RENDER_DT = float(os.environ.get("SPARK_GO2_MUJOCO_RENDER_DT", "0.04"))
+GO2_MUJOCO_SIM_DT = float(os.environ.get("SPARK_GO2_MUJOCO_SIM_DT", "0.005"))
+GO2_MUJOCO_HEADLESS = _env_bool("SPARK_GO2_MUJOCO_HEADLESS", True)
+GO2_MUJOCO_DETECTION_DT = float(os.environ.get("SPARK_GO2_MUJOCO_DETECTION_DT", "0.2"))
+GO2_MUJOCO_FIND_TIMEOUT = float(os.environ.get("SPARK_GO2_MUJOCO_FIND_TIMEOUT", "12.0"))
+GO2_MUJOCO_FIND_YAW_STEP = float(os.environ.get("SPARK_GO2_MUJOCO_FIND_YAW_STEP", "0.35"))
+GO2_MUJOCO_LINEAR_SPEED = float(os.environ.get("SPARK_GO2_MUJOCO_LINEAR_SPEED", "0.4"))
+GO2_MUJOCO_ANGULAR_SPEED = float(os.environ.get("SPARK_GO2_MUJOCO_ANGULAR_SPEED", "1.2"))
+VIDEO_STREAM_FPS = float(os.environ.get("SPARK_VIDEO_STREAM_FPS", "20"))
+VIDEO_JPEG_QUALITY = int(os.environ.get("SPARK_VIDEO_JPEG_QUALITY", "80"))
 
 LLM_PROVIDER = os.environ.get("SPARK_LLM_PROVIDER", "openai").lower()
 LLM_MODEL = os.environ.get(

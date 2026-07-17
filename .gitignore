@@ -11,6 +11,7 @@ models/*
 .DS_Store
 keys/
 actions/keys/
+actions/robot/unitree_mujoco/
 *.egg-info/
 .venv/
 venv/

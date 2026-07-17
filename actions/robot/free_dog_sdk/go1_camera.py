@@ -1,4 +1,6 @@
 import os
+import threading
+import time
 
 import cv2
 import numpy as np
@@ -40,6 +42,34 @@ class go1_camera:
 
         if not self.cap.isOpened():
             raise Exception("Could not open video device")
+
+        # Camera capture must not wait for YOLO inference. The web stream reads
+        # the newest raw frame while detection independently consumes snapshots.
+        self._frame_lock = threading.Lock()
+        self._frame_condition = threading.Condition(self._frame_lock)
+        self._raw_frame = None
+        self._capture_sequence = 0
+        self._stop_event = threading.Event()
+        self._capture_thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self._capture_thread.start()
+
+    def _capture_loop(self):
+        while not self._stop_event.is_set():
+            ret, frame = self.cap.read()
+            if not ret or frame is None:
+                time.sleep(0.01)
+                continue
+            frame = cv2.resize(frame, (self.width, self.height))
+            if self.cam_id in (1, 3, 4):
+                frame = cv2.flip(frame, -1)
+            with self._frame_condition:
+                self._raw_frame = frame
+                self._capture_sequence += 1
+                self._frame_condition.notify_all()
+
+    def get_frame(self):
+        with self._frame_lock:
+            return None if self._raw_frame is None else self._raw_frame.copy()
     
     def get_classes(self):
         return self.classes
@@ -47,13 +77,19 @@ class go1_camera:
     def run(self):
         # min_luminance = 1 
         # max_luminance = 0
-        while True:
-            self.ret, self.frame = self.cap.read()
+        last_sequence = -1
+        while not self._stop_event.is_set():
+            with self._frame_condition:
+                self._frame_condition.wait_for(
+                    lambda: self._capture_sequence != last_sequence or self._stop_event.is_set(),
+                    timeout=0.5,
+                )
+                if self._stop_event.is_set():
+                    break
+                last_sequence = self._capture_sequence
+                self.frame = None if self._raw_frame is None else self._raw_frame.copy()
             if self.frame is None:
-                break
-            self.frame = cv2.resize(self.frame, (self.width, self.height))
-            if self.cam_id == 1 or self.cam_id == 3 or self.cam_id == 4: 
-                self.frame = cv2.flip(self.frame, -1)
+                continue
             
             if self.get_brightness:
                 # https://github.com/imneonizer/How-to-find-if-an-image-is-bright-or-dark 
@@ -140,6 +176,7 @@ class go1_camera:
                     if cv2.waitKey(2) & 0xFF == ord('q'):
                         break
             
+        self._stop_event.set()
         self.cap.release()
         if self.main_thread:
             cv2.destroyAllWindows()
