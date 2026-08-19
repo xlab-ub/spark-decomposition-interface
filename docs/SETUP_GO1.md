@@ -10,17 +10,17 @@ The default configuration uses a **noop** robot backend that requires no hardwar
 
 ## Vendored SDK
 
-The modified [free-dog-sdk](https://github.com/Bin4ry/free-dog-sdk) is included at `actions/robot/free_dog_sdk/`. See `MODIFICATIONS.md` in that directory for Spark-specific changes.
+The modified [free-dog-sdk](https://github.com/Bin4ry/free-dog-sdk) is included at `actions/robot/go1/free_dog_sdk/`. See `MODIFICATIONS.md` in that directory for Spark-specific changes.
 
 Install SDK dependencies:
 
 ```bash
-pip install -r actions/robot/free_dog_sdk/requirements.txt
+pip install -r actions/robot/go1/free_dog_sdk/requirements.txt
 ```
 
 ## Network configuration
 
-Edit `actions/robot/free_dog_sdk/ucl/unitreeConnection.py` and set your machine's IP addresses:
+Edit `actions/robot/go1/free_dog_sdk/ucl/unitreeConnection.py` and set your machine's IP addresses:
 
 ```python
 local_ip_wifi = '<your-ip-on-robot-wifi>'   # e.g. when connected to Unitree hotspot
@@ -47,7 +47,7 @@ When using a real Go1, you may also enable:
 | Feature | Config | Module |
 |---------|--------|--------|
 | Camera / object detection | Requires OpenCV + GStreamer | `optional/vision/` |
-| Ultrasound sensors | Built into go1 backend | `actions/robot/free_dog_sdk/go1_ultrasound.py` |
+| Ultrasound sensors | Built into go1 backend | `actions/robot/go1/free_dog_sdk/go1_ultrasound.py` |
 | Text-to-speech | `SPARK_TTS_ON=true` | `optional/tts/` |
 
 These are not required for basic movement commands.
