@@ -37,7 +37,7 @@ from prompts.classify_instruction import PROMPT_TO_CLASSIFY
 from prompts.normalize_pseudo_instruction import PROMPT_TO_MAKE_PSEUDO
 from prompts.decompose_structured import PROMPT_PSEUDO
 from prompts.find_similar_instruction import PROMPT_TO_FIND_SIMILAR
-from robot import create_robot_backend
+from robot import create_robot_backend, get_function_library
 from robot.syntax import get_first_indent
 
 lock = threading.Lock()
@@ -66,11 +66,7 @@ if WEB_SERVER:
 #                     'move_forward', 'move_left', 'move_right', 'turn_left', 'turn_right',
 #                     'spin_jump', 'lift', 'first_dance', 'second_dance', 
 #                     'find']
-function_library = ['STAND_DOWN', 'STAND_UP',
-                    'TILT_LEFT_SHOULDER', 'TILT_RIGHT_SHOULDER', 'TILT_HEAD_UP', 'TILT_HEAD_DOWN', 'TILT_HEAD_LEFT', 'TILT_HEAD_RIGHT', 
-                    'MOVE_FORWARD', 'MOVE_LEFT', 'MOVE_RIGHT', 'TURN_LEFT', 'TURN_RIGHT',
-                    'SPIN_JUMP', 'LIFT', 'FIRST_DANCE', 'SECOND_DANCE',
-                    'FIND']
+function_library = get_function_library()  # per-robot vocabulary from actions/robot/<robot>/function_library.py
 basic_function_library = function_library.copy()
 new_function_library = {}
 
