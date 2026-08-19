@@ -5,7 +5,7 @@ from config import ROBOT_BACKEND, TTS_ON
 
 sys.path.insert(0, os.path.dirname(__file__))
 
-from robot.noop.noop_backend import NoopRobotBackend
+from robot.go1.noop_backend import NoopRobotBackend
 
 
 def create_robot_backend(connection_settings=None, audio=TTS_ON):
