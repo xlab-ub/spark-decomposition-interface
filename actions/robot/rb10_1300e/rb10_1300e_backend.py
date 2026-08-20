@@ -72,6 +72,9 @@ class rb10_1300e_highcommand(RobotBackend):
         self._joint_vars = [getattr(rb.SystemVariable, f"SD_J{i}_ANG") for i in range(6)]
 
         self.near_area = float(os.environ.get("SPARK_RB10_NEAR_AREA", self.NEAR_AREA))
+        self.step_mm = float(os.environ.get("SPARK_RB10_STEP_MM", self.JOG_STEP_MM))
+        self.step_mm_vertical = float(os.environ.get("SPARK_RB10_STEP_MM_VERTICAL", self.JOG_STEP_MM_VERTICAL))
+        self.lift_mm = float(os.environ.get("SPARK_RB10_LIFT_MM", self.LIFT_AFTER_PICK_MM))
         self.holding = False          # tracked from gripper commands (no sensor feedback)
         self.found_after_find = {}
         self.search_target = None
@@ -177,10 +180,19 @@ class rb10_1300e_highcommand(RobotBackend):
         self.bot.flush(self.rc)
         return [float(self.bot.get_system_variable(self.rc, sv)[1]) for sv in self._joint_vars]
 
-    def _wait_move(self):
+    def _wait_move(self, timeout=60.0):
+        # Wait in short chunks: the rbpodo waits are blocking C calls, and one
+        # indefinite call starves the camera/web threads for the whole motion.
         r = self.bot.wait_for_move_started(self.rc, 1.0)
-        if r.type() == self.rb.ReturnType.Success:
-            self.bot.wait_for_move_finished(self.rc)
+        if r.type() != self.rb.ReturnType.Success:
+            return
+        t_end = time.monotonic() + timeout
+        while time.monotonic() < t_end:
+            r = self.bot.wait_for_move_finished(self.rc, 0.1)
+            if r.type() != self.rb.ReturnType.Timeout:
+                return
+            time.sleep(0.02)
+        print("[rb10_1300e] move did not finish within the wait timeout")
 
     def _jog(self, dx, dy, dz):
         self.bot.flush(self.rc)
@@ -197,22 +209,22 @@ class rb10_1300e_highcommand(RobotBackend):
         self.gripper_open()
 
     def move_forward(self):
-        self._jog(self.JOG_STEP_MM, 0.0, 0.0)
+        self._jog(self.step_mm, 0.0, 0.0)
 
     def move_backward(self):
-        self._jog(-self.JOG_STEP_MM, 0.0, 0.0)
+        self._jog(-self.step_mm, 0.0, 0.0)
 
     def move_left(self):
-        self._jog(0.0, self.JOG_STEP_MM, 0.0)
+        self._jog(0.0, self.step_mm, 0.0)
 
     def move_right(self):
-        self._jog(0.0, -self.JOG_STEP_MM, 0.0)
+        self._jog(0.0, -self.step_mm, 0.0)
 
     def move_up(self):
-        self._jog(0.0, 0.0, self.JOG_STEP_MM_VERTICAL)
+        self._jog(0.0, 0.0, self.step_mm_vertical)
 
     def move_down(self):
-        self._jog(0.0, 0.0, -self.JOG_STEP_MM_VERTICAL)
+        self._jog(0.0, 0.0, -self.step_mm_vertical)
 
     def stop(self):
         # Motions run blocking and sequentially, so this only aborts a queued task.
@@ -339,7 +351,7 @@ class rb10_1300e_highcommand(RobotBackend):
             return
         self.gripper_close()
         time.sleep(1.0)
-        self._jog(0.0, 0.0, self.LIFT_AFTER_PICK_MM)
+        self._jog(0.0, 0.0, self.lift_mm)
 
     def place(self, object_to_place=None):
         # Release at the current position.
