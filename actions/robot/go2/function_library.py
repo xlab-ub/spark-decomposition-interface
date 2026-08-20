@@ -1,7 +1,5 @@
-# Unitree Go2 (quadruped) action vocabulary.
-# Shared by noop / sim / real backends: SPARK_ROBOT_BACKEND=go2_noop | go2_sim | go2.
-# Backend classes must implement a lower-case method for every entry (e.g. move_forward).
-# Verified on the real robot via SportClient (see ~/taegyu/Robot/Go2/go2_run.py menu).
+# Unitree Go2 action vocabulary (SPARK_ROBOT_BACKEND=go2 | go2_sim | go2_noop).
+# Backends must implement a lower-case method for every entry (e.g. move_forward).
 function_library = ['STAND_UP', 'STAND_DOWN', 'RECOVERY_STAND',
                     'MOVE_FORWARD', 'MOVE_BACKWARD', 'MOVE_LEFT', 'MOVE_RIGHT', 'TURN_LEFT', 'TURN_RIGHT',
                     'STOP',

@@ -38,9 +38,7 @@ from prompts.classify_instruction import PROMPT_TO_CLASSIFY
 from prompts.normalize_pseudo_instruction import PROMPT_TO_MAKE_PSEUDO
 from prompts.find_similar_instruction import PROMPT_TO_FIND_SIMILAR
 
-# Per-robot prompt override: prompts/<name>_<robot>.py is used when it exists
-# (e.g. decompose_structured_go2 for SPARK_ROBOT_BACKEND=go2 / go2_sim / go2_noop),
-# otherwise the original file (Go1 vocabulary) is used.
+# Per-robot prompt override: prompts/<name>_<robot>.py when it exists, else the original file.
 import importlib
 
 def _robot_prompt(module_name, attribute):
@@ -145,13 +143,8 @@ def create_prompt_to_find_similar(available_options, new_available_option_pairs,
 go1 = create_robot_backend(audio=TTS_ON)
 
 def go1_run():
-    # Main loop.
-    # Hold the lock only while taking the program off the queue: executing a
-    # long program (FIND scan, walking) under the lock blocked every Rasa
-    # action handler waiting on it, and the Sanic event loop with them
-    # ("Couldn't connect to the server at ...:15055/webhook"). The sleep keeps
-    # this polling thread from busy-waiting the GIL away from the camera and
-    # detection threads.
+    # Main loop. Hold the lock only while dequeuing: executing under it blocks the
+    # Rasa action handlers; the sleep keeps this poll from starving other threads.
     while True: 
         global message 
         

@@ -1,5 +1,4 @@
-# Unitree Go2 variant of revise_block.py: action list and Go1-only example
-# programs replaced by the Go2 vocabulary (see robot/go2/function_library.py).
+# Go2 variant of revise_block.py (vocabulary, phrase mappings, examples).
 PROMPT_TO_REVISE = """Think step by step to carry out the pseudo instruction.
 Write an executable program for the robot based on given pseudo instructions.
 Use only available options to write the program.

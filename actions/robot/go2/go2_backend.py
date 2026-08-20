@@ -64,7 +64,6 @@ class go2_highcommand(RobotBackend):
         self.sport_client.SetTimeout(10.0)
         self.sport_client.Init()
 
-        # Speed/duration overrides from .env (defaults = class constants above).
         self.velocity = float(os.environ.get("SPARK_GO2_VX", self.DEFAULT_VELOCITY))
         self.lateral_velocity = float(os.environ.get("SPARK_GO2_VY", self.DEFAULT_LATERAL_VELOCITY))
         self.yaw_speed = float(os.environ.get("SPARK_GO2_VYAW", self.DEFAULT_YAW_SPEED))
@@ -120,8 +119,7 @@ class go2_highcommand(RobotBackend):
             time.sleep(self.CAMERA_SLEEP_TIME)
 
     def get_detection_data(self):
-        # YOLO pass on the latest camera frame; stores ids/centers/areas and an
-        # annotated copy for the web stream.
+        # YOLO pass on the latest camera frame; feeds the conditions and the web overlay.
         while True:
             with self.frame_lock:
                 frame = self.frame.copy() if self.frame is not None else None
@@ -141,9 +139,8 @@ class go2_highcommand(RobotBackend):
             return [self.available_classes[class_id] for class_id in self.class_ids]
 
     def get_frame(self):
-        # Never None: the web stream encodes this directly (black frame when no camera).
-        # Boxes from the latest YOLO pass are drawn onto the newest camera frame,
-        # so the stream runs at camera rate while the overlay lags one detection.
+        # Never None (the web stream encodes this directly); boxes from the last
+        # YOLO pass are drawn on the newest frame so the video runs at camera rate.
         with self.frame_lock:
             if self.frame is None:
                 return np.zeros((360, 640, 3), np.uint8)
@@ -161,8 +158,7 @@ class go2_highcommand(RobotBackend):
         return
 
     def get_ready_to_move_when_standing(self):
-        # StandUp() locks the joints and Move() is ignored there, so balanced
-        # standing (id 9 in the test menu) is required before any Move().
+        # StandUp() locks the joints: balanced standing is required before Move().
         if not self.ready_to_move:
             self.sport_client.BalanceStand()
             time.sleep(0.5)
@@ -189,8 +185,7 @@ class go2_highcommand(RobotBackend):
         time.sleep(sleep_time)
 
     def _target_area(self):
-        # Box area fraction of the FIND target (or the largest detection when no
-        # target was set). None when nothing relevant is visible.
+        # Area of the FIND target, or of the largest detection when no target is set.
         with self.frame_lock:
             if not self.class_ids:
                 return None
@@ -201,15 +196,13 @@ class go2_highcommand(RobotBackend):
                 candidate_areas = list(self.areas)
         return max(candidate_areas) if candidate_areas else None
 
-    # Conditions for IF / WHILE, evaluated from the front camera (monocular:
-    # box area approximates distance; Go2 has no ultrasound like Go1).
+    # Conditions for IF / WHILE: box area approximates distance (monocular).
     def near(self):
         area = self._target_area()
         return area is not None and area >= self.near_area
 
     def far(self):
-        # Visible but still small -> far. Not visible -> False, so a
-        # WHILE FAR / MOVE_FORWARD loop stops instead of walking blind.
+        # Not visible -> False, so a WHILE FAR loop stops instead of walking blind.
         area = self._target_area()
         return area is not None and area < self.near_area
 
@@ -272,8 +265,7 @@ class go2_highcommand(RobotBackend):
         self._trick('dance', self.sport_client.Dance1, self.DANCE1_SLEEP_TIME)
 
     def _fresh_detection_ids(self, after_time):
-        # Wait for one YOLO pass newer than after_time (avoids stale results
-        # taken before/while the robot was still rotating).
+        # Wait for a YOLO pass newer than after_time (skip stale pre-rotation results).
         deadline = time.monotonic() + 3.0
         while time.monotonic() < deadline:
             with self.frame_lock:
@@ -283,8 +275,7 @@ class go2_highcommand(RobotBackend):
         return []
 
     def find(self, object_to_find=None):
-        # Rotate in place step by step until the object class is detected by the
-        # front camera, or the timeout expires (same idea as Go1's find()).
+        # Rotate step by step until the class is seen or the timeout expires.
         self.search_target = object_to_find
         self.found_after_find[object_to_find] = False
         if self.detector is None:
@@ -302,7 +293,6 @@ class go2_highcommand(RobotBackend):
                 self.found_after_find[object_to_find] = True
                 print(f"[go2] FIND {object_to_find}: found")
                 return
-            # not visible: rotate one scan step and look again
             step_end = time.monotonic() + self.FIND_YAW_STEP_TIME
             while time.monotonic() < step_end:
                 self.sport_client.Move(0, 0, self.yaw_speed)
@@ -321,8 +311,7 @@ class go2_highcommand(RobotBackend):
                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                     if isinstance(node.func.value, ast.Name) and node.func.value.id == 'self':
                         attr_name = node.func.attr
-                        # Vocabulary check instead of go1's hasattr: only actions from
-                        # function_library (+ conditions) are callable commands.
+                        # Vocabulary check instead of go1's hasattr.
                         if attr_name not in self.allowed_calls:
                             print(f"Function {attr_name} not found")
                             return False

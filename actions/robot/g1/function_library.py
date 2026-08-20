@@ -1,7 +1,5 @@
-# Unitree G1 (humanoid) action vocabulary.
-# Shared by noop / sim / real backends: SPARK_ROBOT_BACKEND=g1_noop | g1_sim | g1.
-# Backend classes must implement a lower-case method for every entry (e.g. move_forward).
-# Verified on the real robot via LocoClient + G1ArmActionClient (see ~/taegyu/Robot/G1/g1_run.py).
+# Unitree G1 action vocabulary (SPARK_ROBOT_BACKEND=g1 | g1_sim | g1_noop).
+# Backends must implement a lower-case method for every entry (e.g. move_forward).
 function_library = ['STAND_UP', 'STAND_DOWN',
                     'MOVE_FORWARD', 'MOVE_BACKWARD', 'MOVE_LEFT', 'MOVE_RIGHT', 'TURN_LEFT', 'TURN_RIGHT',
                     'STOP',

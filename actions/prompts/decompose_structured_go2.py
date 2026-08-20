@@ -1,6 +1,4 @@
-# Unitree Go2 variant of decompose_structured.py: same sections and examples,
-# with the action lexicon, phrase mappings, and Go1-only example commands
-# replaced by the Go2 vocabulary (see robot/go2/function_library.py).
+# Go2 variant of decompose_structured.py (vocabulary, phrase mappings, examples).
 PROMPT_PSEUDO = """You are a robot program decomposer. Your job is to translate a user instruction into executable pseudo code.
 
 ## Task

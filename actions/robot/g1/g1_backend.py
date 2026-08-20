@@ -12,7 +12,7 @@ from robot.object_detector import YoloV7TinyDetector
 
 
 def detect_nic(subnet="192.168.123."):
-    # Find the network interface holding an address on the robot subnet.
+    # Find the network interface holding an address on the robot subnet (wired).
     import socket, fcntl, struct
     for _, name in socket.if_nameindex():
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -105,7 +105,7 @@ class g1_highcommand(RobotBackend):
                 print(f"[g1] object detection unavailable: {e}")
 
     def get_camera_data(self):
-        # Head camera via the VideoClient service (same as g1_camera.py), decoded to BGR.
+        # Head camera via the VideoClient service, decoded to BGR.
         try:
             import cv2
             from unitree_sdk2py.go2.video.video_client import VideoClient
@@ -125,8 +125,7 @@ class g1_highcommand(RobotBackend):
             time.sleep(self.CAMERA_SLEEP_TIME)
 
     def get_detection_data(self):
-        # YOLO pass on the latest camera frame; stores ids/centers/areas and an
-        # annotated copy for the web stream.
+        # YOLO pass on the latest camera frame; feeds the conditions and the web overlay.
         while True:
             with self.frame_lock:
                 frame = self.frame.copy() if self.frame is not None else None
@@ -146,9 +145,8 @@ class g1_highcommand(RobotBackend):
             return [self.available_classes[class_id] for class_id in self.class_ids]
 
     def get_frame(self):
-        # Never None: the web stream encodes this directly (black frame when no camera).
-        # Boxes from the latest YOLO pass are drawn onto the newest camera frame,
-        # so the stream runs at camera rate while the overlay lags one detection.
+        # Never None (the web stream encodes this directly); boxes from the last
+        # YOLO pass are drawn on the newest frame so the video runs at camera rate.
         with self.frame_lock:
             if self.frame is None:
                 return np.zeros((360, 640, 3), np.uint8)
@@ -166,14 +164,14 @@ class g1_highcommand(RobotBackend):
         return
 
     def get_ready_to_move_when_standing(self):
-        # Move() needs walk mode: Start() is the menu id 16 / remote R1+Y step.
+        # Move() needs walk mode: Start() (remote R1+Y equivalent).
         if not self.ready_to_move:
             self.loco_client.Start()
             time.sleep(1.0)
             self.ready_to_move = True
 
     def _move(self, vx, vy, vyaw, seconds):
-        # Move() is held for about a second: resend until the step ends, then stop.
+        # Move() is held ~1 s: resend until the step ends, then stop.
         self.get_ready_to_move_when_standing()
         t_end = time.monotonic() + seconds
         while time.monotonic() < t_end:
@@ -182,7 +180,6 @@ class g1_highcommand(RobotBackend):
         self.loco_client.StopMove()
 
     def _arm_action(self, name):
-        # Same pattern as g1_run.py: play the arm action, then release if needed.
         ret = self.arm_client.ExecuteAction(self.action_map.get(name))
         if ret not in (0, None):
             print(f"[g1] arm action {name!r} ret={ret}")
@@ -192,8 +189,7 @@ class g1_highcommand(RobotBackend):
             time.sleep(1.0)
 
     def _target_area(self):
-        # Box area fraction of the FIND target (or the largest detection when no
-        # target was set). None when nothing relevant is visible.
+        # Area of the FIND target, or of the largest detection when no target is set.
         with self.frame_lock:
             if not self.class_ids:
                 return None
@@ -204,15 +200,13 @@ class g1_highcommand(RobotBackend):
                 candidate_areas = list(self.areas)
         return max(candidate_areas) if candidate_areas else None
 
-    # Conditions for IF / WHILE, evaluated from the head camera (monocular:
-    # box area approximates distance).
+    # Conditions for IF / WHILE: box area approximates distance (monocular).
     def near(self):
         area = self._target_area()
         return area is not None and area >= self.near_area
 
     def far(self):
-        # Visible but still small -> far. Not visible -> False, so a
-        # WHILE FAR / MOVE_FORWARD loop stops instead of walking blind.
+        # Not visible -> False, so a WHILE FAR loop stops instead of walking blind.
         area = self._target_area()
         return area is not None and area < self.near_area
 
@@ -222,7 +216,7 @@ class g1_highcommand(RobotBackend):
         return False
 
     def stand_up(self):
-        # Same sequence as menu id 1 (verified): damp, then Squat2StandUp.
+        # Damp first, then Squat2StandUp (same as the verified test menu).
         self.loco_client.Damp()
         time.sleep(0.5)
         self.loco_client.Squat2StandUp()
@@ -260,7 +254,7 @@ class g1_highcommand(RobotBackend):
         time.sleep(self.WAVE_HAND_SLEEP_TIME)
 
     def shake_hand(self):
-        # Menu id 11: first call starts the handshake pose, second call ends it.
+        # First call starts the handshake pose, second call ends it.
         self.loco_client.ShakeHand()
         time.sleep(self.SHAKE_HAND_SLEEP_TIME)
         self.loco_client.ShakeHand()
@@ -282,8 +276,7 @@ class g1_highcommand(RobotBackend):
         self._arm_action("hands up")
 
     def _fresh_detection_ids(self, after_time):
-        # Wait for one YOLO pass newer than after_time (avoids stale results
-        # taken before/while the robot was still rotating).
+        # Wait for a YOLO pass newer than after_time (skip stale pre-rotation results).
         deadline = time.monotonic() + 3.0
         while time.monotonic() < deadline:
             with self.frame_lock:
@@ -293,8 +286,7 @@ class g1_highcommand(RobotBackend):
         return []
 
     def find(self, object_to_find=None):
-        # Rotate in place step by step until the object class is detected by the
-        # head camera, or the timeout expires (same behavior as the Go2 backend).
+        # Rotate step by step until the class is seen or the timeout expires.
         self.search_target = object_to_find
         self.found_after_find[object_to_find] = False
         if self.detector is None:
@@ -312,7 +304,6 @@ class g1_highcommand(RobotBackend):
                 self.found_after_find[object_to_find] = True
                 print(f"[g1] FIND {object_to_find}: found")
                 return
-            # not visible: rotate one scan step and look again
             step_end = time.monotonic() + self.FIND_YAW_STEP_TIME
             while time.monotonic() < step_end:
                 self.loco_client.Move(0, 0, self.yaw_speed)
@@ -331,8 +322,7 @@ class g1_highcommand(RobotBackend):
                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                     if isinstance(node.func.value, ast.Name) and node.func.value.id == 'self':
                         attr_name = node.func.attr
-                        # Vocabulary check instead of go1's hasattr: only actions from
-                        # function_library (+ conditions) are callable commands.
+                        # Vocabulary check instead of go1's hasattr.
                         if attr_name not in self.allowed_calls:
                             print(f"Function {attr_name} not found")
                             return False

@@ -1,5 +1,4 @@
-# Unitree G1 variant of revise_block.py: action list and Go1-only example
-# programs replaced by the G1 vocabulary (see robot/g1/function_library.py).
+# G1 variant of revise_block.py (vocabulary, phrase mappings, examples).
 PROMPT_TO_REVISE = """Think step by step to carry out the pseudo instruction.
 Write an executable program for the robot based on given pseudo instructions.
 Use only available options to write the program.

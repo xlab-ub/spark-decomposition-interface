@@ -1,10 +1,3 @@
-"""Rainbow Robotics RB10-1300E MuJoCo simulation backend.
-
-Selected with SPARK_ROBOT_BACKEND=rb10_1300e_sim. Not implemented yet: the factory
-below raises so the actions server fails loudly instead of silently running noop.
-"""
-
-
 def create_rb10_1300e_sim_backend(connection_settings=None, audio=False):
     raise NotImplementedError(
         "SPARK_ROBOT_BACKEND=rb10_1300e_sim (Rainbow Robotics RB10-1300E MuJoCo) is not implemented yet. "
