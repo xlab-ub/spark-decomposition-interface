@@ -16,8 +16,9 @@ class YoloV7TinyDetector:
         except ImportError as exc:
             raise RuntimeError("OpenCV is required for object detection") from exc
 
-        # Model files are shared with the Go1 SDK bundle (24 MB weights, not duplicated).
-        sdk_dir = Path(__file__).resolve().parent.parent / "go1" / "free_dog_sdk"
+        # Shared perception assets for all robots (actions/robot/models/);
+        # the Go1 SDK keeps its own vendored copy under go1/free_dog_sdk/.
+        models_dir = Path(__file__).resolve().parent.parent / "models"
         self.cv2 = cv2
         major_version = int(cv2.__version__.split(".", 1)[0])
         if major_version >= 5:
@@ -27,10 +28,10 @@ class YoloV7TinyDetector:
             )
         self.confidence = confidence
         self.nms_threshold = nms_threshold
-        self.classes = (sdk_dir / "coco.names").read_text().splitlines()
+        self.classes = (models_dir / "coco.names").read_text().splitlines()
         self.model = cv2.dnn.readNet(
-            str(sdk_dir / "models" / "yolov7-tiny.weights"),
-            str(sdk_dir / "models" / "yolov7-tiny.cfg"),
+            str(models_dir / "yolov7-tiny.weights"),
+            str(models_dir / "yolov7-tiny.cfg"),
         )
         layer_names = self.model.getLayerNames()
         self.output_layers = [layer_names[int(i) - 1] for i in self.model.getUnconnectedOutLayers()]
