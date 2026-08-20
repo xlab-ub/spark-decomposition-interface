@@ -83,7 +83,7 @@ class go2_highcommand(RobotBackend):
         self.centers = []
         self.areas = []
         self.detection_time = 0.0    # monotonic time of the latest YOLO pass
-        self.annotated_frame = None
+        self.detection_boxes = []    # (x, y, w, h, class_id) of the latest YOLO pass
         self.allowed_calls = {name.lower() for name in function_library} | {name.lower() for name in condition_library}
 
         self.frame = None
@@ -127,10 +127,10 @@ class go2_highcommand(RobotBackend):
                 frame = self.frame.copy() if self.frame is not None else None
             if frame is not None:
                 try:
-                    class_ids, centers, areas, annotated = self.detector.detect(frame)
+                    class_ids, centers, areas, boxes, _ = self.detector.detect(frame)
                     with self.frame_lock:
                         self.class_ids, self.centers, self.areas = class_ids, centers, areas
-                        self.annotated_frame = annotated
+                        self.detection_boxes = [(x, y, w, h, c) for (x, y, w, h), c in zip(boxes, class_ids)]
                         self.detection_time = time.monotonic()
                 except Exception as e:
                     print(f"[go2] detection error: {e}")
@@ -142,12 +142,20 @@ class go2_highcommand(RobotBackend):
 
     def get_frame(self):
         # Never None: the web stream encodes this directly (black frame when no camera).
+        # Boxes from the latest YOLO pass are drawn onto the newest camera frame,
+        # so the stream runs at camera rate while the overlay lags one detection.
         with self.frame_lock:
-            if self.annotated_frame is not None:
-                return self.annotated_frame.copy()
-            if self.frame is not None:
-                return self.frame.copy()
-        return np.zeros((360, 640, 3), np.uint8)
+            if self.frame is None:
+                return np.zeros((360, 640, 3), np.uint8)
+            frame = self.frame.copy()
+            boxes = list(self.detection_boxes)
+        if boxes:
+            import cv2
+            for x, y, w, h, class_id in boxes:
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (60, 220, 120), 2)
+                cv2.putText(frame, self.available_classes[class_id], (x, max(y - 6, 12)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, (60, 220, 120), 1)
+        return frame
 
     def tts(self, text):
         return

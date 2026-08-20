@@ -1,5 +1,5 @@
 # YOLOv7-tiny/COCO on an in-memory BGR frame; shared by all robot backends.
-# Interface: detect(frame) -> (class_ids, centers, areas, annotated_frame).
+# Interface: detect(frame) -> (class_ids, centers, areas, boxes, annotated_frame).
 
 from pathlib import Path
 
@@ -34,8 +34,9 @@ class YoloV7TinyDetector:
         self.output_layers = [layer_names[int(i) - 1] for i in self.model.getUnconnectedOutLayers()]
 
     def detect(self, frame):
-        # Returns (class_ids, centers, areas, annotated):
-        #   centers: normalized (cx, cy) in [0, 1];  areas: box area as a fraction of the frame.
+        # Returns (class_ids, centers, areas, boxes, annotated):
+        #   centers: normalized (cx, cy) in [0, 1];  areas: box area as a fraction of the frame;
+        #   boxes: pixel rects (x, y, w, h) for drawing on later frames.
         cv2 = self.cv2
         height, width = frame.shape[:2]
         self.model.setInput(
@@ -63,14 +64,15 @@ class YoloV7TinyDetector:
         indexes = cv2.dnn.NMSBoxes(boxes, confidences, self.confidence, self.nms_threshold)
         kept = {int(index) for index in np.asarray(indexes).reshape(-1)}
         annotated = frame.copy()
-        kept_ids, kept_centers, kept_areas = [], [], []
+        kept_ids, kept_centers, kept_areas, kept_boxes = [], [], [], []
         for index in sorted(kept):
             x, y, box_width, box_height = boxes[index]
             class_id = class_ids[index]
             kept_ids.append(class_id)
             kept_centers.append(centers[index])
             kept_areas.append(areas[index])
+            kept_boxes.append((x, y, box_width, box_height))
             label = f"{self.classes[class_id]} {confidences[index]:.2f}"
             cv2.rectangle(annotated, (x, y), (x + box_width, y + box_height), (60, 220, 120), 2)
             cv2.putText(annotated, label, (x, max(y - 6, 12)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (60, 220, 120), 1)
-        return kept_ids, kept_centers, kept_areas, annotated
+        return kept_ids, kept_centers, kept_areas, kept_boxes, annotated
