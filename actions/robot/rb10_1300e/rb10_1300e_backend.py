@@ -330,7 +330,7 @@ class rb10_1300e_highcommand(RobotBackend):
 
     def reach(self, object_to_reach=None):
         # Move the TCP to the detected object (no gripper action: the program
-        # composes GRIPPER_OPEN / REACH / GRIPPER_CLOSE / MOVE_UP explicitly).
+        # composes REACH / GRIPPER_CLOSE / MOVE_UP explicitly).
         target = object_to_reach or self.search_target
         if target is None:
             print("[rb10_1300e] REACH: no target (say e.g. REACH APPLE, or FIND first)")
