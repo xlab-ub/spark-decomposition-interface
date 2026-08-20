@@ -44,7 +44,8 @@ Brief rationale (1-3 sentences): map pseudo code lines back to the decomposition
 - If required details are missing, make the smallest assumption needed and mention it in Explanation.
 - "go" means MOVE_FORWARD unless context clearly indicates otherwise.
 - "pick up", "grab", and "take" map to PICK <object> (e.g. "pick up the apple" -> PICK APPLE).
-- "put down", "drop", and "release" map to PLACE.
+- "put down", "drop", and "release" map to PLACE (opens the gripper at the current position).
+- "bring it back", "bring it to the original position", "carry it home", and "return" map to MOVE_HOME (the robot moves home still holding the object; add PLACE only when the user also asks to put it down).
 - "open the gripper" means GRIPPER_OPEN; "close the gripper" and "grip" map to GRIPPER_CLOSE.
 - "go home", "home position", and "reset pose" map to MOVE_HOME.
 - "up" and "raise" map to MOVE_UP; "down" and "lower" map to MOVE_DOWN; "stop" means STOP.
