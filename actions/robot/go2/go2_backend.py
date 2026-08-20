@@ -16,6 +16,7 @@ import numpy as np
 from robot.interface import RobotBackend
 from robot.syntax import HumanFriendlyPythonSyntaxConverter
 from robot.go2.function_library import function_library, condition_library
+from robot.go2.object_detector import YoloV7TinyDetector
 
 
 def detect_nic(subnet="192.168.123."):
@@ -158,6 +159,10 @@ class go2_highcommand(RobotBackend):
     DANCE1_SLEEP_TIME = 20
 
     CAMERA_SLEEP_TIME = 0.1
+    DETECTION_SLEEP_TIME = 0.3        # YOLO pass period on the latest frame
+    FIND_TIMEOUT = 25.0               # total seconds a FIND scan may take
+    FIND_YAW_STEP_TIME = 1.0          # one scan rotation burst (~28 deg at 0.5 rad/s)
+    NEAR_AREA = 0.05                  # target box area fraction that counts as "near"
 
     def __init__(self, connection_settings=None, audio=False):
         # Transport: wired (DDS SportClient) or wifi (WebRTC wrapper above).
@@ -186,8 +191,19 @@ class go2_highcommand(RobotBackend):
         self.move_seconds = float(os.environ.get("SPARK_GO2_MOVE_SECONDS", self.MOVE_SLEEP_TIME))
         self.turn_seconds = float(os.environ.get("SPARK_GO2_TURN_SECONDS", self.TURN_SLEEP_TIME))
 
+        self.find_timeout = float(os.environ.get("SPARK_GO2_FIND_TIMEOUT", self.FIND_TIMEOUT))
+        self.near_area = float(os.environ.get("SPARK_GO2_NEAR_AREA", self.NEAR_AREA))
+
         self.ready_to_move = False    # balanced standing, Move() accepted
         self.found_after_find = {}
+        self.search_target = None
+        self.detector = None
+        self.available_classes = []
+        self.class_ids = []
+        self.centers = []
+        self.areas = []
+        self.detection_time = 0.0    # monotonic time of the latest YOLO pass
+        self.annotated_frame = None
         self.allowed_calls = {name.lower() for name in function_library} | {name.lower() for name in condition_library}
 
         self.frame = None
@@ -196,6 +212,13 @@ class go2_highcommand(RobotBackend):
             if self.conn_mode == "wired":
                 threading.Thread(target=self.get_camera_data, daemon=True).start()
                 print('Camera loaded')
+                try:
+                    self.detector = YoloV7TinyDetector()
+                    self.available_classes = self.detector.classes
+                    threading.Thread(target=self.get_detection_data, daemon=True).start()
+                    print('Object detection loaded')
+                except Exception as e:
+                    print(f"[go2] object detection unavailable: {e}")
             else:
                 print('[go2] camera over wifi is not wired up yet (web stream shows a black frame)')
 
@@ -219,12 +242,32 @@ class go2_highcommand(RobotBackend):
                         self.frame = image
             time.sleep(self.CAMERA_SLEEP_TIME)
 
+    def get_detection_data(self):
+        # YOLO pass on the latest camera frame; stores ids/centers/areas and an
+        # annotated copy for the web stream.
+        while True:
+            with self.frame_lock:
+                frame = self.frame.copy() if self.frame is not None else None
+            if frame is not None:
+                try:
+                    class_ids, centers, areas, annotated = self.detector.detect(frame)
+                    with self.frame_lock:
+                        self.class_ids, self.centers, self.areas = class_ids, centers, areas
+                        self.annotated_frame = annotated
+                        self.detection_time = time.monotonic()
+                except Exception as e:
+                    print(f"[go2] detection error: {e}")
+            time.sleep(self.DETECTION_SLEEP_TIME)
+
     def get_recognized_objects(self):
-        return []
+        with self.frame_lock:
+            return [self.available_classes[class_id] for class_id in self.class_ids]
 
     def get_frame(self):
         # Never None: the web stream encodes this directly (black frame when no camera).
         with self.frame_lock:
+            if self.annotated_frame is not None:
+                return self.annotated_frame.copy()
             if self.frame is not None:
                 return self.frame.copy()
         return np.zeros((360, 640, 3), np.uint8)
@@ -260,13 +303,30 @@ class go2_highcommand(RobotBackend):
             print(f"[go2] {name} ret={ret}")
         time.sleep(sleep_time)
 
-    # Conditions for IF / WHILE. No perception is wired up yet on the real Go2,
-    # so these stay False (a WHILE FAR loop then simply never runs).
-    def far(self):
-        return False
+    def _target_area(self):
+        # Box area fraction of the FIND target (or the largest detection when no
+        # target was set). None when nothing relevant is visible.
+        with self.frame_lock:
+            if not self.class_ids:
+                return None
+            if self.search_target in self.available_classes:
+                target_id = self.available_classes.index(self.search_target)
+                candidate_areas = [a for c, a in zip(self.class_ids, self.areas) if c == target_id]
+            else:
+                candidate_areas = list(self.areas)
+        return max(candidate_areas) if candidate_areas else None
 
+    # Conditions for IF / WHILE, evaluated from the front camera (monocular:
+    # box area approximates distance; Go2 has no ultrasound like Go1).
     def near(self):
-        return False
+        area = self._target_area()
+        return area is not None and area >= self.near_area
+
+    def far(self):
+        # Visible but still small -> far. Not visible -> False, so a
+        # WHILE FAR / MOVE_FORWARD loop stops instead of walking blind.
+        area = self._target_area()
+        return area is not None and area < self.near_area
 
     def found(self, object_to_find=None):
         if object_to_find in self.found_after_find:
@@ -326,10 +386,45 @@ class go2_highcommand(RobotBackend):
     def dance(self):
         self._trick('dance', self.sport_client.Dance1, self.DANCE1_SLEEP_TIME)
 
+    def _fresh_detection_ids(self, after_time):
+        # Wait for one YOLO pass newer than after_time (avoids stale results
+        # taken before/while the robot was still rotating).
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline:
+            with self.frame_lock:
+                if self.detection_time > after_time:
+                    return list(self.class_ids)
+            time.sleep(0.05)
+        return []
+
     def find(self, object_to_find=None):
-        # Perception is not wired up yet: remember the target, found() stays False.
+        # Rotate in place step by step until the object class is detected by the
+        # front camera, or the timeout expires (same idea as Go1's find()).
+        self.search_target = object_to_find
         self.found_after_find[object_to_find] = False
-        print(f"[go2] FIND {object_to_find}: perception not wired yet")
+        if self.detector is None:
+            print(f"[go2] FIND {object_to_find}: object detection unavailable")
+            return
+        if object_to_find not in self.available_classes:
+            print(f"[go2] FIND {object_to_find}: unknown object class (COCO names only)")
+            return
+        target_id = self.available_classes.index(object_to_find)
+
+        self.get_ready_to_move_when_standing()
+        t_end = time.monotonic() + self.find_timeout
+        while time.monotonic() < t_end:
+            if target_id in self._fresh_detection_ids(time.monotonic()):
+                self.found_after_find[object_to_find] = True
+                print(f"[go2] FIND {object_to_find}: found")
+                return
+            # not visible: rotate one scan step and look again
+            step_end = time.monotonic() + self.FIND_YAW_STEP_TIME
+            while time.monotonic() < step_end:
+                self.sport_client.Move(0, 0, self.yaw_speed)
+                time.sleep(self.MOVE_RESEND_TIME)
+            self.sport_client.StopMove()
+            time.sleep(0.3)  # settle before the fresh detection check
+        print(f"[go2] FIND {object_to_find}: not found within {self.find_timeout:.0f}s")
 
     def check_simplified_syntax_validity(self, simplified_code):
         standard_code = HumanFriendlyPythonSyntaxConverter.to_standard_syntax(simplified_code, True)
