@@ -206,7 +206,8 @@ class rb10_1300e_highcommand(RobotBackend):
         self.bot.set_speed_bar(self.rc, self.HOME_SPEED_BAR)
         self.bot.move_j(self.rc, np.array(self.HOME, dtype=float), self.HOME_JOINT_SPEED, self.HOME_JOINT_ACCEL)
         self._wait_move()
-        self.gripper_open()
+        if not self.holding:
+            self.gripper_open()   # reset like go_home(), but never drop a held object
 
     def move_forward(self):
         self._jog(self.step_mm, 0.0, 0.0)
