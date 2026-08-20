@@ -403,8 +403,9 @@ function updateLogicalRelations() {
 //     global components_for_pseudo_code
 //     return jsonify({'components_for_pseudo_code': components_for_pseudo_code})
 
-// List of all known action keywords for matching
-const allActionKeywords = [
+// Action keywords for matching; refreshed from /get_current_libraries so the
+// highlight and syntax coloring follow the active robot's vocabulary.
+let allActionKeywords = [
   'STAND_DOWN', 'STAND_UP',
   'TILT_LEFT_SHOULDER', 'TILT_RIGHT_SHOULDER', 'TILT_HEAD_UP', 'TILT_HEAD_DOWN', 'TILT_HEAD_LEFT', 'TILT_HEAD_RIGHT',
   'MOVE_FORWARD', 'MOVE_LEFT', 'MOVE_RIGHT', 'TURN_LEFT', 'TURN_RIGHT',
@@ -578,6 +579,7 @@ function updateSupportedLibraries() {
           }
 
           const customList = data.new_function_library || [];
+          allActionKeywords = (data.basic_function_library || []).concat(customList);
           const customKey = JSON.stringify(customList);
           if (customKey !== lastCustomLib) {
             lastCustomLib = customKey;
@@ -607,8 +609,7 @@ function applySyntaxHighlighting(code) {
   // Define custom syntax highlighting rules
   const rules = [
       { pattern: /\b(IF|ELSE|WHILE|REPEAT|END|TIMES)\b/g, class: 'keyword' },
-      // { pattern: /\b(STAND_UP|STAND_DOWN|MOVE_FORWARD|TURN_LEFT|TURN_RIGHT)\b/g, class: 'function' },
-      { pattern: /\b(STAND_UP|STAND_DOWN|TILT_LEFT_SHOULDER|TILT_RIGHT_SHOULDER|TILT_HEAD_UP|TILT_HEAD_DOWN|TILT_HEAD_LEFT|TILT_HEAD_RIGHT|MOVE_FORWARD|MOVE_LEFT|MOVE_RIGHT|TURN_LEFT|TURN_RIGHT|SPIN_JUMP|LIFT|FIRST_DANCE|SECOND_DANCE|FIND)\b/g, class: 'function' },
+      { pattern: new RegExp('\\b(' + allActionKeywords.join('|') + ')\\b', 'g'), class: 'function' },
       { pattern: /\b\d+\b/g, class: 'number' },
       { pattern: /#.*/g, class: 'comment' }
   ];
