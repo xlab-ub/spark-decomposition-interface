@@ -41,7 +41,6 @@ class rb10_1300e_highcommand(RobotBackend):
     APPROACH_HEIGHT = 80.0            # mm, pass above the target before descending
     REACH_JOINT_SPEED, REACH_JOINT_ACCEL = 15, 30
     MAX_REACH_MM = 900.0              # reject targets farther than this from the base
-    LIFT_AFTER_PICK_MM = 80.0
     HORIZONTAL_RX = 180.0             # tcp rx when the gripper is level with the ground
 
     IK_MAX_ITERS = 30
@@ -74,7 +73,6 @@ class rb10_1300e_highcommand(RobotBackend):
         self.near_area = float(os.environ.get("SPARK_RB10_NEAR_AREA", self.NEAR_AREA))
         self.step_mm = float(os.environ.get("SPARK_RB10_STEP_MM", self.JOG_STEP_MM))
         self.step_mm_vertical = float(os.environ.get("SPARK_RB10_STEP_MM_VERTICAL", self.JOG_STEP_MM_VERTICAL))
-        self.lift_mm = float(os.environ.get("SPARK_RB10_LIFT_MM", self.LIFT_AFTER_PICK_MM))
         self.holding = False          # tracked from gripper commands (no sensor feedback)
         self.found_after_find = {}
         self.search_target = None
@@ -330,38 +328,30 @@ class rb10_1300e_highcommand(RobotBackend):
         _, u, v = max(candidates)
         return u, v
 
-    def pick(self, object_to_pick=None):
-        target = object_to_pick or self.search_target
+    def reach(self, object_to_reach=None):
+        # Move the TCP to the detected object (no gripper action: the program
+        # composes GRIPPER_OPEN / REACH / GRIPPER_CLOSE / MOVE_UP explicitly).
+        target = object_to_reach or self.search_target
         if target is None:
-            print("[rb10_1300e] PICK: no target (say e.g. PICK APPLE, or FIND first)")
+            print("[rb10_1300e] REACH: no target (say e.g. REACH APPLE, or FIND first)")
             return
         if self.detector is None or self.intrinsics is None:
-            print(f"[rb10_1300e] PICK {target}: camera/detection unavailable")
+            print(f"[rb10_1300e] REACH {target}: camera/detection unavailable")
             return
         pixel = self._target_pixel(target)
         if pixel is None:
-            print(f"[rb10_1300e] PICK {target}: not in view")
+            print(f"[rb10_1300e] REACH {target}: not in view")
             return
         u, v = pixel
         with self.frame_lock:
             z = float(self.depth_m[v, u]) if self.depth_m is not None else 0.0
         if z <= 0:
-            print(f"[rb10_1300e] PICK {target}: no valid depth at ({u},{v})")
+            print(f"[rb10_1300e] REACH {target}: no valid depth at ({u},{v})")
             return
         point_cam = np.array(self.rs.rs2_deproject_pixel_to_point(self.intrinsics, [u, v], z))
         x, y, z_mm = (self.cam_to_base @ np.append(point_cam * 1000.0, 1.0))[:3]
-        print(f"[rb10_1300e] PICK {target}: pixel=({u},{v}) -> base(mm)=({x:.0f},{y:.0f},{z_mm:.0f})")
-        self.gripper_open()
-        if not self._reach_point(x, y, z_mm):
-            return
-        self.gripper_close()
-        time.sleep(1.0)
-        self._jog(0.0, 0.0, self.lift_mm)
-
-    def place(self, object_to_place=None):
-        # Release at the current position.
-        self.gripper_open()
-        time.sleep(1.0)
+        print(f"[rb10_1300e] REACH {target}: pixel=({u},{v}) -> base(mm)=({x:.0f},{y:.0f},{z_mm:.0f})")
+        self._reach_point(x, y, z_mm)
 
     # ------------------------------------------------------------------- vision
     def find(self, object_to_find=None):

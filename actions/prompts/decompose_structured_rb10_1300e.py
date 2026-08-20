@@ -43,9 +43,10 @@ Brief rationale (1-3 sentences): map pseudo code lines back to the decomposition
 - Resolve ambiguity with the most reasonable interpretation, but do not add extra intent.
 - If required details are missing, make the smallest assumption needed and mention it in Explanation.
 - "go" means MOVE_FORWARD unless context clearly indicates otherwise.
-- "pick up", "grab", and "take" map to PICK <object> (e.g. "pick up the apple" -> PICK APPLE).
-- "put down", "drop", and "release" map to PLACE (opens the gripper at the current position).
-- "bring it back", "bring it to the original position", "carry it home", and "return" map to MOVE_HOME (the robot moves home still holding the object; add PLACE only when the user also asks to put it down).
+- "reach (for)" and "move to the <object>" map to REACH <object> (moves the gripper to the object, does not grab).
+- "pick up", "grab", and "take" decompose into this sequence: GRIPPER_OPEN, REACH <object>, GRIPPER_CLOSE, MOVE_UP (e.g. "pick up the apple" -> GRIPPER_OPEN / REACH APPLE / GRIPPER_CLOSE / MOVE_UP, one per line).
+- "put down", "drop", and "release" map to GRIPPER_OPEN.
+- "bring it back", "bring it to the original position", "carry it home", and "return" map to MOVE_HOME (the robot moves home still holding the object; add GRIPPER_OPEN only when the user also asks to put it down).
 - "open the gripper" means GRIPPER_OPEN; "close the gripper" and "grip" map to GRIPPER_CLOSE.
 - "go home", "home position", and "reset pose" map to MOVE_HOME.
 - "up" and "raise" map to MOVE_UP; "down" and "lower" map to MOVE_DOWN; "stop" means STOP.
@@ -60,7 +61,7 @@ Brief rationale (1-3 sentences): map pseudo code lines back to the decomposition
 ### Atomic Actions
 {available_options}
 
-PICK may take one object argument (PICK APPLE); all other actions take no arguments.
+REACH takes one object argument (REACH APPLE); all other actions take no arguments.
 
 ### Sensing
 FIND <object> — searches for one object name (no parentheses). Example: FIND CUP

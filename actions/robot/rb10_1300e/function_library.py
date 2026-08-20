@@ -1,10 +1,11 @@
 # Rainbow Robotics RB10-1300E action vocabulary (SPARK_ROBOT_BACKEND=rb10_1300e | _sim | _noop).
-# Backends must implement a lower-case method for every entry; actions may take
-# string arguments (PICK CUP -> pick("cup")); without one, PICK/PLACE use the last FIND target.
+# Backends must implement a lower-case method for every entry; REACH takes an
+# object argument (REACH APPLE -> reach("apple")); "pick up" decomposes at the
+# LLM level into GRIPPER_OPEN, REACH <object>, GRIPPER_CLOSE, MOVE_UP.
 function_library = ['MOVE_HOME',
                     'MOVE_UP', 'MOVE_DOWN', 'MOVE_LEFT', 'MOVE_RIGHT', 'MOVE_FORWARD', 'MOVE_BACKWARD',
+                    'REACH',
                     'GRIPPER_OPEN', 'GRIPPER_CLOSE',
-                    'PICK', 'PLACE',
                     'STOP',
                     'FIND']
 

@@ -10,7 +10,7 @@ Available Options:
 
 The following descriptions are for new available options.{new_available_option_pairs}
 
-MOVE_HOME, MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, MOVE_FORWARD, MOVE_BACKWARD, GRIPPER_OPEN, GRIPPER_CLOSE, PLACE, STOP take no arguments. PICK may take one object argument (PICK APPLE).
+MOVE_HOME, MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, MOVE_FORWARD, MOVE_BACKWARD, GRIPPER_OPEN, GRIPPER_CLOSE, STOP take no arguments. REACH takes one object argument (REACH APPLE).
 This robot is a fixed manipulator arm. Use ONLY these action names. Do NOT invent other names (STAND_UP, TURN_LEFT, TURN_RIGHT, SPIN_JUMP do not exist).
 FIND only takes one argument: a string to be matched with the object name. For example, FIND CUP will find a cup. You must not use FIND with parentheses, for example, FIND(CUP) is not allowed.
 Available objects for FIND are only as follows: 
@@ -142,7 +142,10 @@ GRIPPER_CLOSE
 
 Instruction: PICK_APPLE
 Program:
-PICK APPLE
+GRIPPER_OPEN
+REACH APPLE
+GRIPPER_CLOSE
+MOVE_UP
 
 Instruction: FIND_CUP
 Program:
