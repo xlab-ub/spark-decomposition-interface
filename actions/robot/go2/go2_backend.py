@@ -46,7 +46,7 @@ class go2_highcommand(RobotBackend):
     STRETCH_SLEEP_TIME = 8
     DANCE1_SLEEP_TIME = 20
 
-    CAMERA_SLEEP_TIME = 0.1
+    CAMERA_SLEEP_TIME = 0.03
     DETECTION_SLEEP_TIME = 0.3        # YOLO pass period on the latest frame
     FIND_TIMEOUT = 25.0               # total seconds a FIND scan may take
     FIND_YAW_STEP_TIME = 1.0          # one scan rotation burst (~28 deg at 0.5 rad/s)

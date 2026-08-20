@@ -11,6 +11,7 @@ import os
 import sys 
 import threading 
 import re 
+import time
 from typing import Any, Text, Dict, List
 from rasa_sdk import Action, Tracker
 from rasa_sdk.executor import CollectingDispatcher
@@ -144,37 +145,45 @@ def create_prompt_to_find_similar(available_options, new_available_option_pairs,
 go1 = create_robot_backend(audio=TTS_ON)
 
 def go1_run():
-    # Main loop. 
+    # Main loop.
+    # Hold the lock only while taking the program off the queue: executing a
+    # long program (FIND scan, walking) under the lock blocked every Rasa
+    # action handler waiting on it, and the Sanic event loop with them
+    # ("Couldn't connect to the server at ...:15055/webhook"). The sleep keeps
+    # this polling thread from busy-waiting the GIL away from the camera and
+    # detection threads.
     while True: 
-        # https://stackoverflow.com/questions/17894168/python-input-and-output-threading 
         global message 
         
-        # Acquire the lock before modifying the shared variable
+        program = None
         with lock:
-            # for m in message: 
-            #     if m.strip() == '': 
-            #         continue 
-            #     go1.execute_function_by_name(m.strip()) 
             if len(message) > 0:
-                go1.execute_simplified_syntax('\n'.join(message))
+                program = '\n'.join(message)
                 message.clear() 
+        if program is not None:
+            go1.execute_simplified_syntax(program)
+        time.sleep(0.05)
 
 def go1_run_with_tts():
     while True: 
-        # https://stackoverflow.com/questions/17894168/python-input-and-output-threading 
         global message 
         global message_for_tts
         
-        # Acquire the lock before modifying the shared variable
+        program = None
+        tts_messages = []
         with lock:
             if len(message_for_tts) > 0:
-                for m in message_for_tts:
-                    go1.tts(m)
+                tts_messages = list(message_for_tts)
                 message_for_tts.clear()
             
                 if len(message) > 0:
-                    go1.execute_simplified_syntax('\n'.join(message))
+                    program = '\n'.join(message)
                     message.clear()
+        for m in tts_messages:
+            go1.tts(m)
+        if program is not None:
+            go1.execute_simplified_syntax(program)
+        time.sleep(0.05)
         
 message = [] 
 message_for_tts = []

@@ -43,7 +43,7 @@ class g1_highcommand(RobotBackend):
     SHAKE_HAND_SLEEP_TIME = 3         # between the two ShakeHand() calls (start/stop)
     ARM_ACTION_SLEEP_TIME = 2         # before "release arm" (same as g1_run.py)
 
-    CAMERA_SLEEP_TIME = 0.1
+    CAMERA_SLEEP_TIME = 0.03
     DETECTION_SLEEP_TIME = 0.3        # YOLO pass period on the latest frame
     FIND_TIMEOUT = 25.0               # total seconds a FIND scan may take
     FIND_YAW_STEP_TIME = 1.5          # one scan rotation burst (~26 deg at 0.3 rad/s)
