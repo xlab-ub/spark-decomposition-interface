@@ -20,6 +20,7 @@ from rasa_sdk.events import SlotSet
 sys.path.insert(0, os.path.dirname(__file__))
 
 from config import (
+    ROBOT_BACKEND,
     RASA_TEST,
     WEB_SERVER,
     TTS_ON,
@@ -32,11 +33,29 @@ from config import (
 )
 from engine.generator import ProgramGenerator, ProgramGenerator_openai
 from prompts.decompose_direct import PROMPT
-from prompts.revise_block import PROMPT_TO_REVISE
 from prompts.classify_instruction import PROMPT_TO_CLASSIFY
 from prompts.normalize_pseudo_instruction import PROMPT_TO_MAKE_PSEUDO
-from prompts.decompose_structured import PROMPT_PSEUDO
 from prompts.find_similar_instruction import PROMPT_TO_FIND_SIMILAR
+
+# Per-robot prompt override: prompts/<name>_<robot>.py is used when it exists
+# (e.g. decompose_structured_go2 for SPARK_ROBOT_BACKEND=go2 / go2_sim / go2_noop),
+# otherwise the original file (Go1 vocabulary) is used.
+import importlib
+
+def _robot_prompt(module_name, attribute):
+    robot = ROBOT_BACKEND
+    for suffix in ("_sim", "_noop"):
+        if robot.endswith(suffix):
+            robot = robot[: -len(suffix)]
+    try:
+        module = importlib.import_module(f"prompts.{module_name}_{robot}")
+        print(f"Using robot prompt: prompts/{module_name}_{robot}.py")
+    except ImportError:
+        module = importlib.import_module(f"prompts.{module_name}")
+    return getattr(module, attribute)
+
+PROMPT_PSEUDO = _robot_prompt("decompose_structured", "PROMPT_PSEUDO")
+PROMPT_TO_REVISE = _robot_prompt("revise_block", "PROMPT_TO_REVISE")
 from robot import create_robot_backend, get_function_library
 from robot.syntax import get_first_indent
 
