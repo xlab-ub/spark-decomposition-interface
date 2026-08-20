@@ -145,7 +145,13 @@ class go2_highcommand(RobotBackend):
             if self.frame is None:
                 return np.zeros((360, 640, 3), np.uint8)
             frame = self.frame.copy()
-            boxes = list(self.detection_boxes)
+            # Detection always runs (NEAR/FAR need it), but the overlay only shows
+            # the FIND target so the stream stays clean until the user asks.
+            if self.search_target in self.available_classes:
+                target_id = self.available_classes.index(self.search_target)
+                boxes = [b for b in self.detection_boxes if b[4] == target_id]
+            else:
+                boxes = []
         if boxes:
             import cv2
             for x, y, w, h, class_id in boxes:
