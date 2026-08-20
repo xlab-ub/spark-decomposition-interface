@@ -1,7 +1,7 @@
-# Frame-based object detector for the Go2 backend (adapted from the upstream
-# go2_mujoco branch). Runs the YOLOv7-tiny/COCO model bundled with the Go1 SDK
-# on an in-memory BGR frame, so any camera source can reuse it. Swap this class
-# for an open-vocabulary detector (e.g. YOLO-World) without touching the backend:
+# Frame-based object detector shared by all robot backends (adapted from the
+# upstream go2_mujoco branch). Runs the YOLOv7-tiny/COCO model on an in-memory
+# BGR frame, so any camera source can reuse it. Swap this class for an
+# open-vocabulary detector (e.g. YOLO-World) without touching the backends:
 # the interface is detect(frame) -> (class_ids, centers, areas, annotated_frame).
 
 from pathlib import Path
@@ -18,7 +18,7 @@ class YoloV7TinyDetector:
 
         # Shared perception assets for all robots (actions/robot/models/);
         # the Go1 SDK keeps its own vendored copy under go1/free_dog_sdk/.
-        models_dir = Path(__file__).resolve().parent.parent / "models"
+        models_dir = Path(__file__).resolve().parent / "models"
         self.cv2 = cv2
         major_version = int(cv2.__version__.split(".", 1)[0])
         if major_version >= 5:

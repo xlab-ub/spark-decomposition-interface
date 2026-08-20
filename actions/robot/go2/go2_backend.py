@@ -16,7 +16,7 @@ import numpy as np
 from robot.interface import RobotBackend
 from robot.syntax import HumanFriendlyPythonSyntaxConverter
 from robot.go2.function_library import function_library, condition_library
-from robot.go2.object_detector import YoloV7TinyDetector
+from robot.object_detector import YoloV7TinyDetector
 
 
 def detect_nic(subnet="192.168.123."):
