@@ -1,8 +1,5 @@
-# Frame-based object detector shared by all robot backends (adapted from the
-# upstream go2_mujoco branch). Runs the YOLOv7-tiny/COCO model on an in-memory
-# BGR frame, so any camera source can reuse it. Swap this class for an
-# open-vocabulary detector (e.g. YOLO-World) without touching the backends:
-# the interface is detect(frame) -> (class_ids, centers, areas, annotated_frame).
+# YOLOv7-tiny/COCO on an in-memory BGR frame; shared by all robot backends.
+# Interface: detect(frame) -> (class_ids, centers, areas, annotated_frame).
 
 from pathlib import Path
 

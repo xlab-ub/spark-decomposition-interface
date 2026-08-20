@@ -1,10 +1,3 @@
-# Unitree G1 backend, same command set as the verified test menus in
-# ~/taegyu/Robot/G1/g1_run.py (wired Ethernet DDS via the official unitree_sdk2py
-# LocoClient for walking + G1ArmActionClient for arm motions) and g1_camera.py
-# (head camera via the same VideoClient service as the Go2).
-# Enter NORMAL mode with the remote first: L2+B -> L2+Up -> R1+Y.
-# Tunables (SPARK_G1_*) are read from the environment, see .env.example.
-
 import ast
 import os
 import threading

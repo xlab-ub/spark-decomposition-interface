@@ -1,12 +1,4 @@
-# Unitree Go2 backend, same command set as the verified test menus in
-# ~/taegyu/Robot/Go2/go2_run.py (wired) and go2_run_wifi.py (Wi-Fi).
-# SPARK_GO2_CONN selects the transport: "wired" = Ethernet DDS via the official
-# unitree_sdk2py SportClient (+ VideoClient front camera), "wifi" = WebRTC via
-# unitree_webrtc_connect (same api ids; camera not wired up yet).
-# Tunables (SPARK_GO2_*) are read from the environment, see .env.example.
-
 import ast
-import json
 import os
 import threading
 import time
@@ -33,111 +25,7 @@ def detect_nic(subnet="192.168.123."):
         if ip.startswith(subnet):
             return name
     raise RuntimeError(f"No interface with a {subnet}x address (check cable and PC IP 192.168.123.222, "
-                       f"or set SPARK_GO2_IFACE; for Wi-Fi use SPARK_GO2_CONN=wifi)")
-
-
-def find_robot():
-    # Return the robot IP: wired main board if reachable, else the first host on
-    # any PC subnet with port 9991 open, else None (AP mode). Same as go2_run_wifi.py.
-    import socket, fcntl, struct
-    from concurrent.futures import ThreadPoolExecutor
-
-    def has_9991(ip):
-        try:
-            with socket.create_connection((ip, 9991), timeout=0.4):
-                return ip
-        except OSError:
-            return None
-
-    if has_9991("192.168.123.161"):
-        return "192.168.123.161"
-    my_ips = []
-    for _, name in socket.if_nameindex():
-        sk = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            ip = socket.inet_ntoa(fcntl.ioctl(sk.fileno(), 0x8915, struct.pack("256s", name[:15].encode()))[20:24])
-        except OSError:
-            continue
-        finally:
-            sk.close()
-        if not ip.startswith(("127.", "169.254.", "172.17.", "100.")):
-            my_ips.append(ip)
-    with ThreadPoolExecutor(128) as ex:
-        for my_ip in my_ips:
-            base = my_ip.rsplit(".", 1)[0]
-            for ip in ex.map(has_9991, [f"{base}.{i}" for i in range(1, 255)]):
-                if ip and ip != my_ip:
-                    return ip
-    return None
-
-
-class WebRTCSportClient:
-    # SportClient-like wrapper over WebRTC so go2_highcommand below is identical
-    # for both transports (from go2_run_wifi.py; only the commands used here).
-    def __init__(self, ip=None):
-        import asyncio
-        self._asyncio = asyncio
-        self.ip = ip
-        self.loop = asyncio.new_event_loop()
-        threading.Thread(target=self.loop.run_forever, daemon=True).start()
-        self.timeout = 10.0
-
-    def SetTimeout(self, t):
-        self.timeout = t
-
-    def _run(self, coro):
-        return self._asyncio.run_coroutine_threadsafe(coro, self.loop).result(self.timeout)
-
-    def Init(self):
-        from unitree_webrtc_connect import UnitreeWebRTCConnection, WebRTCConnectionMethod, RTC_TOPIC
-
-        async def _connect():
-            key = os.environ.get("SPARK_GO2_AES_KEY") or os.environ.get("UNITREE_AES_128_KEY") or None  # firmware >= 1.1.15
-            if self.ip:
-                self.conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalSTA, ip=self.ip, aes_128_key=key)
-            else:
-                self.conn = UnitreeWebRTCConnection(WebRTCConnectionMethod.LocalAP, aes_128_key=key)
-            await self.conn.connect()
-            # sport commands need "normal" (or "mcf") motion mode, not "ai"
-            r = await self.conn.datachannel.pub_sub.publish_request_new(RTC_TOPIC["MOTION_SWITCHER"], {"api_id": 1001})
-            if r["data"]["header"]["status"]["code"] == 0 and json.loads(r["data"]["data"])["name"] not in ("normal", "mcf"):
-                await self.conn.datachannel.pub_sub.publish_request_new(
-                    RTC_TOPIC["MOTION_SWITCHER"], {"api_id": 1002, "parameter": {"name": "normal"}})
-                await self._asyncio.sleep(5)
-
-        self._run(_connect())
-
-    def _call(self, name, parameter=None):
-        # One-shot command: wait only briefly for the response. Some commands
-        # (BalanceStand/RecoveryStand in mcf mode) send no response, so time out
-        # cleanly instead of hanging the action thread (same as go2_run_wifi.py).
-        from concurrent.futures import TimeoutError as FuturesTimeout
-        from unitree_webrtc_connect import RTC_TOPIC, SPORT_CMD, SPORT_CMD_MCF
-        cmd = {**SPORT_CMD, **SPORT_CMD_MCF}
-
-        async def _req():
-            req = {"api_id": cmd[name]}
-            if parameter is not None:
-                req["parameter"] = parameter
-            r = await self._asyncio.wait_for(
-                self.conn.datachannel.pub_sub.publish_request_new(RTC_TOPIC["SPORT_MOD"], req), 2.0)
-            return r["data"]["header"]["status"]["code"]
-
-        try:
-            return self._asyncio.run_coroutine_threadsafe(_req(), self.loop).result(3.0)
-        except (FuturesTimeout, self._asyncio.TimeoutError):
-            return 0   # message was sent; response just didn't arrive
-
-    def Move(self, vx, vy, vyaw): return self._call("Move", {"x": vx, "y": vy, "z": vyaw})
-    def StopMove(self): return self._call("StopMove")
-    def BalanceStand(self): return self._call("BalanceStand")
-    def StandDown(self): return self._call("StandDown")
-    def RecoveryStand(self): return self._call("RecoveryStand")
-    def Sit(self): return self._call("Sit")
-    def RiseSit(self): return self._call("RiseSit")
-    def Hello(self): return self._call("Hello")
-    def Stretch(self): return self._call("Stretch")
-    def Dance1(self): return self._call("Dance1")
+                       f"or set SPARK_GO2_IFACE)")
 
 
 class go2_highcommand(RobotBackend):
@@ -165,22 +53,14 @@ class go2_highcommand(RobotBackend):
     NEAR_AREA = 0.05                  # target box area fraction that counts as "near"
 
     def __init__(self, connection_settings=None, audio=False):
-        # Transport: wired (DDS SportClient) or wifi (WebRTC wrapper above).
-        self.conn_mode = os.environ.get("SPARK_GO2_CONN", "wired").lower()
-        if self.conn_mode == "wired":
-            from unitree_sdk2py.core.channel import ChannelFactoryInitialize
-            from unitree_sdk2py.go2.sport.sport_client import SportClient
-            subnet = os.environ.get("SPARK_GO2_SUBNET", "192.168.123.")
-            iface = connection_settings or os.environ.get("SPARK_GO2_IFACE") or detect_nic(subnet)
-            print(f"[go2] wired: DDS on interface {iface}")
-            ChannelFactoryInitialize(0, iface)
-            self.sport_client = SportClient()
-        elif self.conn_mode == "wifi":
-            ip = connection_settings or os.environ.get("SPARK_GO2_IP") or find_robot()
-            print(f"[go2] wifi: WebRTC to {ip or 'AP mode 192.168.12.1'}")
-            self.sport_client = WebRTCSportClient(ip)
-        else:
-            raise RuntimeError(f"Unknown SPARK_GO2_CONN={self.conn_mode!r} (use 'wired' or 'wifi')")
+        from unitree_sdk2py.core.channel import ChannelFactoryInitialize
+        from unitree_sdk2py.go2.sport.sport_client import SportClient
+
+        subnet = os.environ.get("SPARK_GO2_SUBNET", "192.168.123.")
+        iface = connection_settings or os.environ.get("SPARK_GO2_IFACE") or detect_nic(subnet)
+        print(f"[go2] DDS on interface {iface}")
+        ChannelFactoryInitialize(0, iface)
+        self.sport_client = SportClient()
         self.sport_client.SetTimeout(10.0)
         self.sport_client.Init()
 
@@ -209,21 +89,18 @@ class go2_highcommand(RobotBackend):
         self.frame = None
         self.frame_lock = threading.Lock()
         if os.environ.get("SPARK_GO2_CAMERA", "true").lower() in ("1", "true", "yes"):
-            if self.conn_mode == "wired":
-                threading.Thread(target=self.get_camera_data, daemon=True).start()
-                print('Camera loaded')
-                try:
-                    self.detector = YoloV7TinyDetector()
-                    self.available_classes = self.detector.classes
-                    threading.Thread(target=self.get_detection_data, daemon=True).start()
-                    print('Object detection loaded')
-                except Exception as e:
-                    print(f"[go2] object detection unavailable: {e}")
-            else:
-                print('[go2] camera over wifi is not wired up yet (web stream shows a black frame)')
+            threading.Thread(target=self.get_camera_data, daemon=True).start()
+            print('Camera loaded')
+            try:
+                self.detector = YoloV7TinyDetector()
+                self.available_classes = self.detector.classes
+                threading.Thread(target=self.get_detection_data, daemon=True).start()
+                print('Object detection loaded')
+            except Exception as e:
+                print(f"[go2] object detection unavailable: {e}")
 
     def get_camera_data(self):
-        # Front camera via DDS VideoClient (wired only), decoded to BGR.
+        # Front camera via the VideoClient service, decoded to BGR.
         try:
             import cv2
             from unitree_sdk2py.go2.video.video_client import VideoClient
@@ -463,4 +340,4 @@ def create_go2_backend(connection_settings=None, audio=False):
     return go2_highcommand(connection_settings=connection_settings, audio=audio)
 
 
-__all__ = ["create_go2_backend", "go2_highcommand", "WebRTCSportClient"]
+__all__ = ["create_go2_backend", "go2_highcommand"]
